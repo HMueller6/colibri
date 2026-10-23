@@ -608,6 +608,7 @@ colibri 希望讓前沿模型減少對稀缺硬體的依賴，並降低執行成
 |---|---|
 | 一步安裝與手動安裝，涵蓋所有平台 | [quickstart.md](docs/quickstart.md) |
 | 透過 AI 助手安裝，以及 MCP 伺服器 | [AI_SETUP.md](docs/AI_SETUP.md)、[MCP_SERVER.md](docs/MCP_SERVER.md) |
+| 用 REA 做逆向工程，也可搭配本機模型 | [reverse-engineering.md](docs/reverse-engineering.md) |
 | API：OpenAI、Anthropic、工具、KV slots、儀表板 | [api.md](docs/api.md) |
 | System One 與決策模型 | [systemone.md](docs/systemone.md)、[laya.md](docs/laya.md)、[gliner_decide.md](docs/gliner_decide.md)、[clef.md](docs/clef.md) |
 | Vulkan：專家層級、稠密鏈、沒有 Resizable BAR 的顯示卡 | [vulkan.md](docs/vulkan.md) |

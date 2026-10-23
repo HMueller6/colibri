@@ -661,6 +661,7 @@ fallimento ben controllato vale più di un numero veloce senza spiegazione.
 |---|---|
 | L'installazione in un passo e quella manuale, per ogni piattaforma | [quickstart.md](docs/quickstart.md) |
 | Installare tramite un assistente AI, e il server MCP | [AI_SETUP.md](docs/AI_SETUP.md), [MCP_SERVER.md](docs/MCP_SERVER.md) |
+| Reverse engineering con REA, anche con un modello locale | [reverse-engineering.md](docs/reverse-engineering.md) |
 | L'API: OpenAI, Anthropic, tool, slot KV, dashboard | [api.md](docs/api.md) |
 | System One e i modelli di decisione | [systemone.md](docs/systemone.md), [laya.md](docs/laya.md), [gliner_decide.md](docs/gliner_decide.md), [clef.md](docs/clef.md) |
 | Vulkan: il livello degli expert, la catena densa, le schede senza Resizable BAR | [vulkan.md](docs/vulkan.md) |

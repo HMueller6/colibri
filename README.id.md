@@ -687,6 +687,7 @@ penjelasan.
 |---|---|
 | Penyiapan satu langkah dan instalasi manual, untuk setiap platform | [quickstart.md](docs/quickstart.md) |
 | Penyiapan melalui asisten AI, dan server MCP | [AI_SETUP.md](docs/AI_SETUP.md), [MCP_SERVER.md](docs/MCP_SERVER.md) |
+| Rekayasa balik dengan REA, juga dengan model lokal | [reverse-engineering.md](docs/reverse-engineering.md) |
 | API: OpenAI, Anthropic, tools, KV slots, dashboard | [api.md](docs/api.md) |
 | System One dan model keputusan | [systemone.md](docs/systemone.md), [laya.md](docs/laya.md), [gliner_decide.md](docs/gliner_decide.md), [clef.md](docs/clef.md) |
 | Vulkan: expert tier, dense chain, kartu tanpa Resizable BAR | [vulkan.md](docs/vulkan.md) |

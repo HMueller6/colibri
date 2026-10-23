@@ -384,6 +384,7 @@ colibri 希望前沿模型更少依赖稀缺硬件，运行成本更低。这意
 |---|---|
 | 一步安装与手动安装，所有平台 | [quickstart.md](docs/quickstart.md) |
 | 通过 AI 助手安装，以及 MCP 服务器 | [AI_SETUP.md](docs/AI_SETUP.md)、[MCP_SERVER.md](docs/MCP_SERVER.md) |
+| 用 REA 做逆向工程，也可配合本地模型 | [reverse-engineering.md](docs/reverse-engineering.md) |
 | API：OpenAI、Anthropic、工具调用、KV slot、仪表盘 | [api.md](docs/api.md) |
 | System One 与决策模型 | [systemone.md](docs/systemone.md)、[laya.md](docs/laya.md)、[gliner_decide.md](docs/gliner_decide.md)、[clef.md](docs/clef.md) |
 | Vulkan：专家层级、稠密链、没有 Resizable BAR 的显卡 | [vulkan.md](docs/vulkan.md) |

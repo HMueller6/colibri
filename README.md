@@ -627,6 +627,7 @@ well-controlled failure is worth more here than an unexplained fast number.
 |---|---|
 | The one-step setup and the manual install, every platform | [quickstart.md](docs/quickstart.md) |
 | Setting up through an AI assistant, and the MCP server | [AI_SETUP.md](docs/AI_SETUP.md), [MCP_SERVER.md](docs/MCP_SERVER.md) |
+| Reverse engineering with REA, also on a local model | [reverse-engineering.md](docs/reverse-engineering.md) |
 | The API: OpenAI, Anthropic, tools, KV slots, dashboard | [api.md](docs/api.md) |
 | System One and the decision models | [systemone.md](docs/systemone.md), [laya.md](docs/laya.md), [gliner_decide.md](docs/gliner_decide.md), [clef.md](docs/clef.md) |
 | Vulkan: the expert tier, the dense chain, cards without Resizable BAR | [vulkan.md](docs/vulkan.md) |
