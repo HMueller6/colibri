@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Stair &amp; Railing Drafter</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: spec panel on the left, drawing sheet on the right; on phones the sheet stacks above the panel. */
+:root {
+  --bg: #e8ecf1;
+  --panel: #f8fafc;
+  --field: #ffffff;
+  --ink: #17202b;
+  --muted: #5a6676;
+  --line: #d3dae3;
+  --accent: #1c4fb8;
+  --accent-ink: #ffffff;
+  --ok: #17784a;
+  --ok-bg: #e2f3ea;
+  --warn: #9a4a06;
+  --warn-bg: #fbeedd;
+  --font-display: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  /* Drawing colors. An exported file has none of these and uses the light fallbacks in DRAWING_CSS. */
+  --d-paper: #ffffff;
+  --d-grid: #e9eef5;
+  --d-ink: #1b2430;
+  --d-fill: #eef2f7;
+  --d-floor: #98a5b5;
+  --d-dim: #1c4fb8;
+  --d-muted: #5a6676;
+  --d-font: var(--font-body);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1218;
+    --panel: #131a23;
+    --field: #0f151d;
+    --ink: #e4e9f0;
+    --muted: #93a0b1;
+    --line: #263140;
+    --accent: #7aa5ff;
+    --accent-ink: #0b1322;
+    --ok: #5fd39b;
+    --ok-bg: #12301f;
+    --warn: #f3ad62;
+    --warn-bg: #36240f;
+    --d-paper: #0f1b2d;
+    --d-grid: #172842;
+    --d-ink: #dce6f3;
+    --d-fill: #18273d;
+    --d-floor: #4d6180;
+    --d-dim: #8db2ff;
+    --d-muted: #93a0b1;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1218;
+  --panel: #131a23;
+  --field: #0f151d;
+  --ink: #e4e9f0;
+  --muted: #93a0b1;
+  --line: #263140;
+  --accent: #7aa5ff;
+  --accent-ink: #0b1322;
+  --ok: #5fd39b;
+  --ok-bg: #12301f;
+  --warn: #f3ad62;
+  --warn-bg: #36240f;
+  --d-paper: #0f1b2d;
+  --d-grid: #172842;
+  --d-ink: #dce6f3;
+  --d-fill: #18273d;
+  --d-floor: #4d6180;
+  --d-dim: #8db2ff;
+  --d-muted: #93a0b1;
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 14px/1.45 var(--font-body);
+  padding-block: 16px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+
+.app { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 16px; height: 100%; }
+
+.panel {
+  display: flex; flex-direction: column; gap: 16px;
+  min-height: 0; overflow-y: auto; padding: 20px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
+}
+.brand h1 {
+  margin: 0; font: 600 20px/1.15 var(--font-display);
+  letter-spacing: .04em; text-transform: uppercase; text-wrap: balance;
+}
+.brand p { margin: 6px 0 0; color: var(--muted); }
+
+.group { display: flex; flex-direction: column; gap: 10px; padding-top: 14px; border-top: 1px solid var(--line); }
+.group h2 {
+  display: flex; align-items: baseline; gap: 8px; margin: 0;
+  font: 600 12px/1 var(--font-display); letter-spacing: .1em; text-transform: uppercase; color: var(--muted);
+}
+.group h2 small { font: 400 11px/1 var(--font-body); letter-spacing: 0; text-transform: none; }
+
+.fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.fields.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.fields.sheet-fields { grid-template-columns: minmax(0, 1fr) 7.5rem; }
+.field { display: flex; flex-direction: column; gap: 4px; min-width: 0; font-size: 12px; color: var(--muted); }
+.input { position: relative; display: flex; }
+input, select {
+  width: 100%; padding: 8px 10px;
+  font: 500 14px var(--font-mono); color: var(--ink);
+  background: var(--field); border: 1px solid var(--line); border-radius: 4px;
+}
+#title { font-family: var(--font-body); }
+/* Spinners eat the narrow fields; arrow keys still step the value. */
+input[type="number"] { appearance: textfield; -moz-appearance: textfield; }
+input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.input input { padding-right: 36px; }
+.unit {
+  position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+  font: 400 12px var(--font-mono); font-style: normal; color: var(--muted); pointer-events: none;
+}
+input:out-of-range { border-color: var(--warn); }
+input:focus-visible, select:focus-visible, .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.hint { margin: 0; font-size: 12px; color: var(--muted); }
+
+.summary { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 0; }
+.summary dt { color: var(--muted); }
+.summary dd { margin: 0; text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+.checks { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.checks li { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 2px 10px; align-items: baseline; }
+.chip {
+  grid-row: span 2; padding: 4px 0; border-radius: 3px; text-align: center;
+  font: 600 11px/1 var(--font-display); letter-spacing: .06em; text-transform: uppercase;
+}
+.chip.ok { color: var(--ok); background: var(--ok-bg); }
+.chip.warn { color: var(--warn); background: var(--warn-bg); }
+.checks .what { font-family: var(--font-mono); font-size: 13px; font-variant-numeric: tabular-nums; }
+.checks .limit { font-size: 12px; color: var(--muted); }
+
+.btn {
+  padding: 8px 14px; cursor: pointer;
+  font: 500 13px var(--font-body); color: var(--ink);
+  background: var(--field); border: 1px solid var(--line); border-radius: 4px;
+}
+.btn:hover { border-color: var(--accent); }
+.btn.primary { color: var(--accent-ink); background: var(--accent); border-color: var(--accent); }
+.btn.primary:hover { filter: brightness(1.08); }
+#reset { align-self: flex-start; }
+
+.stage { display: flex; flex-direction: column; gap: 10px; min-width: 0; min-height: 0; }
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; }
+.sheet-name { font: 600 13px var(--font-display); letter-spacing: .08em; text-transform: uppercase; }
+#status { margin-left: 8px; font: 400 12px var(--font-body); letter-spacing: 0; text-transform: none; color: var(--muted); }
+.exports { display: flex; gap: 8px; }
+.sheet {
+  position: relative; flex: 1; min-height: 0; overflow: hidden;
+  background: var(--d-paper); border: 1px solid var(--line); border-radius: 2px;
+}
+.sheet svg { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+
+@media (max-width: 800px) {
+  html, body { height: auto; }
+  .app { grid-template-columns: minmax(0, 1fr); height: auto; }
+  .stage { order: -1; height: min(70vh, 560px); min-height: 340px; }
+  .panel { overflow: visible; }
+}
+</style>
+</head>
+<body>
+<main class="app">
+  <aside class="panel" aria-label="Stair settings">
+    <header class="brand">
+      <h1>Stair &amp; Railing Drafter</h1>
+      <p>Enter the stair and railing sizes. The side elevation redraws as you type.</p>
+    </header>
+
+    <section class="group">
+      <h2>Sheet</h2>
+      <div class="fields sheet-fields">
+        <label class="field" for="title"><span>Drawing title</span>
+          <input id="title" type="text" maxlength="60" autocomplete="off">
+        </label>
+        <label class="field" for="unit"><span>Units</span>
+          <select id="unit">
+            <option value="in">Inches</option>
+            <option value="cm">Centimeters</option>
+            <option value="mm">Millimeters</option>
+          </select>
+        </label>
+      </div>
+    </section>
+
+    <section class="group">
+      <h2>Stair</h2>
+      <div class="fields three">
+        <label class="field" for="risers"><span>Risers</span>
+          <input id="risers" type="number" inputmode="numeric" min="2" max="40" step="1">
+        </label>
+        <label class="field" for="rise"><span>Riser height</span>
+          <span class="input"><input id="rise" type="number" inputmode="decimal"><em class="unit">in</em></span>
+        </label>
+        <label class="field" for="run"><span>Tread run</span>
+          <span class="input"><input id="run" type="number" inputmode="decimal"><em class="unit">in</em></span>
+        </label>
+      </div>
+      <p class="hint">The top landing is the last tread, so a stair has one tread fewer than risers.</p>
+    </section>
+
+    <section class="group">
+      <h2>Railing</h2>
+      <div class="fields">
+        <label class="field" for="rail"><span>Handrail height</span>
+          <span class="input"><input id="rail" type="number" inputmode="decimal"><em class="unit">in</em></span>
+        </label>
+        <label class="field" for="balusters"><span>Balusters per tread</span>
+          <input id="balusters" type="number" inputmode="numeric" min="0" max="6" step="1">
+        </label>
+      </div>
+      <p class="hint">Height is measured up from the nosing line. Set it to 0 to remove the railing.</p>
+    </section>
+
+    <section class="group">
+      <h2>Summary</h2>
+      <dl class="summary" id="summary"></dl>
+    </section>
+
+    <section class="group">
+      <h2>Code check <small>IRC, US residential</small></h2>
+      <ul class="checks" id="checks"></ul>
+      <p class="hint">A quick check against common IRC limits. Confirm with the code that applies to your project.</p>
+    </section>
+
+    <button type="button" class="btn" id="reset">Load example</button>
+  </aside>
+
+  <section class="stage" aria-label="Drawing">
+    <div class="toolbar">
+      <div class="sheet-name">Side elevation <span id="status" role="status"></span></div>
+      <div class="exports" id="exports">
+        <button type="button" class="btn" id="save-svg">Download SVG</button>
+        <button type="button" class="btn primary" id="save-png">Download PNG</button>
+      </div>
+    </div>
+    <div class="sheet" id="sheet"></div>
+  </section>
+</main>
+
+<script>
+const PER_IN = { in: 1, cm: 2.54, mm: 25.4 };
+const STEP = { in: 0.125, cm: 0.1, mm: 1 };
+const ROUND = { in: 10000, cm: 100, mm: 10 };
+const GRID = { in: 12, cm: 30, mm: 300 }; // one grid square, in the unit itself
+// Length limits are in inches; risers and balusters are counts.
+const LIMITS = { rise: [1, 24], run: [1, 48], rail: [0, 60], risers: [2, 40], balusters: [0, 6] };
+const LENGTHS = ['rise', 'run', 'rail'];
+const FIELDS = ['title', 'unit', 'risers', 'rise', 'run', 'rail', 'balusters'];
+const EXAMPLE = { title: 'Example stair', unit: 'in', risers: 12, rise: 7.5, run: 10, rail: 36, balusters: 2 };
+// Part sizes in inches: 4x4 newel, 1 1/2" balusters, 2 1/2" handrail profile.
+const NEWEL = 3.5, NEWEL_CAP = 3, BALUSTER = 1.5, HANDRAIL = 2.5;
+const EXPORT_W = 1600, EXPORT_H = 1000;
+const STORE_KEY = 'stair-railing-drafter';
+const EPS = 1e-6;
+
+const DRAWING_CSS = [
+  '.d-bg,.d-band{fill:var(--d-paper,#fff)}',
+  '.d-gridline{fill:none;stroke:var(--d-grid,#e9eef5);stroke-width:1}',
+  '.d-floor{fill:none;stroke:var(--d-floor,#98a5b5);stroke-width:4}',
+  '.d-stair{fill:var(--d-fill,#eef2f7);stroke:var(--d-ink,#1b2430);stroke-width:2}',
+  '.d-pitch{fill:none;stroke:var(--d-muted,#5a6676);stroke-width:1;stroke-dasharray:6 4}',
+  '.d-baluster{fill:none;stroke:var(--d-ink,#1b2430)}',
+  '.d-handrail{fill:none;stroke:var(--d-ink,#1b2430);stroke-linecap:round}',
+  '.d-newel{fill:var(--d-paper,#fff);stroke:var(--d-ink,#1b2430);stroke-width:1.5}',
+  '.d-wit{fill:none;stroke:var(--d-muted,#5a6676);stroke-width:.75;opacity:.7}',
+  '.d-dim{fill:none;stroke:var(--d-dim,#1c4fb8);stroke-width:1.2}',
+  '.d-frame{fill:none;stroke:var(--d-ink,#1b2430);stroke-width:1}',
+  '.d-sheet text{font-family:var(--d-font,Helvetica,Arial,sans-serif);fill:var(--d-ink,#1b2430)}',
+  '.d-sheet .d-label{font-size:13px;font-weight:500;fill:var(--d-dim,#1c4fb8);text-anchor:middle;paint-order:stroke;stroke:var(--d-paper,#fff);stroke-width:10px;stroke-linejoin:round}',
+  '.d-sheet .d-title{font-size:15px;font-weight:600}',
+  '.d-sheet .d-meta{font-size:12px;fill:var(--d-muted,#5a6676)}',
+].join('');
+
+const $ = (id) => document.getElementById(id);
+const sheet = $('sheet');
+const r = (n) => Math.round(n * 10) / 10;
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+let unit = 'in';
+let state;
+
+function inches(v, withFeet) {
+  let n = Math.round(v * 16); // sixteenths of an inch
+  const ft = withFeet ? Math.floor(n / 192) : 0;
+  n -= ft * 192;
+  const whole = Math.floor(n / 16);
+  let num = n % 16, den = 16;
+  while (num && num % 2 === 0) { num /= 2; den /= 2; }
+  let text = num ? `${whole ? whole + ' ' : ''}${num}/${den}"` : `${whole}"`;
+  if (ft) text = `${ft}'-${!whole && num ? '0 ' : ''}${text}`;
+  return text;
+}
+
+// withFeet gives 7'-6" style lengths for totals; part sizes stay in inches.
+function fmt(v, withFeet = false) {
+  if (state.unit === 'mm') return `${Math.round(v)} mm`;
+  if (state.unit === 'cm') return `${Math.round(v * 10) / 10} cm`;
+  return inches(v, withFeet);
+}
+
+const pitch = (s) => `${(Math.atan2(s.rise, s.run) * 180 / Math.PI).toFixed(1)}°`;
+
+function readNumber(id, k) {
+  const isLength = LENGTHS.includes(id), scale = isLength ? k : 1;
+  const [lo, hi] = LIMITS[id];
+  const v = parseFloat($(id).value);
+  const n = Number.isFinite(v) ? Math.min(hi * scale, Math.max(lo * scale, v)) : EXAMPLE[id] * scale;
+  return isLength ? n : Math.round(n);
+}
+
+function readState() {
+  const k = PER_IN[unit];
+  return {
+    title: $('title').value.trim() || 'Stair',
+    unit,
+    k,
+    risers: readNumber('risers', k),
+    rise: readNumber('rise', k),
+    run: readNumber('run', k),
+    rail: readNumber('rail', k),
+    balusters: readNumber('balusters', k),
+  };
+}
+
+function dim(out, ax, ay, bx, by, ox, oy, label, gap = 6) {
+  const len = Math.hypot(ox, oy), ux = ox / len, uy = oy / len, over = 8;
+  const px = ax + ox, py = ay + oy, qx = bx + ox, qy = by + oy;
+  out.push(`<path class="d-wit" d="M${r(ax + ux * gap)} ${r(ay + uy * gap)}L${r(px + ux * over)} ${r(py + uy * over)}M${r(bx + ux * gap)} ${r(by + uy * gap)}L${r(qx + ux * over)} ${r(qy + uy * over)}"/>`);
+  out.push(`<path class="d-dim" d="M${r(px)} ${r(py)}L${r(qx)} ${r(qy)}M${r(px - 4)} ${r(py + 4)}l8 -8M${r(qx - 4)} ${r(qy + 4)}l8 -8"/>`);
+  const mx = r((px + qx) / 2), my = r((py + qy) / 2);
+  const turn = ox !== 0 ? ` transform="rotate(-90 ${mx} ${my})"` : '';
+  out.push(`<text class="d-label" x="${mx}" y="${my}" dy=".35em"${turn}>${esc(label)}</text>`);
+}
+
+function drawingSVG(s, W, H) {
+  const { k, rise: R, run: G, risers: N, rail } = s;
+  const T = N - 1, totalRise = N * R, totalRun = T * G;
+  const ext = Math.max(G, 12 * k); // floor shown past each end of the stair
+  const x0 = -ext, x1 = totalRun + ext;
+  const top = rail > 0 ? totalRise + rail + NEWEL_CAP * k : totalRise;
+  const stacked = W < 960;
+  const band = stacked ? 78 : 58;
+  const pad = { l: 56, r: 56, t: 24, b: 56 + band };
+  const scale = Math.min((W - pad.l - pad.r) / (x1 - x0), (H - pad.t - pad.b) / top);
+  const ox = pad.l + (W - pad.l - pad.r - (x1 - x0) * scale) / 2 - x0 * scale;
+  const oy = H - pad.b - (H - pad.t - pad.b - top * scale) / 2;
+  const X = (x) => r(ox + x * scale);
+  const Y = (y) => r(oy - y * scale);
+
+  const specs = [`${N} risers`, `${T} ${T === 1 ? 'tread' : 'treads'}`, `${pitch(s)} pitch`,
+    rail > 0 ? `handrail ${fmt(rail)}` : 'no railing'].join('  ·  ');
+  const out = [`<svg xmlns="http://www.w3.org/2000/svg" class="d-sheet" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(`${s.title}: ${specs}`)}">`,
+    `<style>${DRAWING_CSS}</style>`, `<rect class="d-bg" width="${W}" height="${H}"/>`];
+
+  // Grid squares at true scale, lined up with the foot of the first riser.
+  const g = GRID[s.unit] * scale;
+  if (g >= 10) {
+    out.push(`<defs><pattern id="d-grid" width="${r(g)}" height="${r(g)}" x="${X(0)}" y="${Y(0)}" patternUnits="userSpaceOnUse"><path class="d-gridline" d="M${r(g)} 0H0V${r(g)}"/></pattern></defs>`,
+      `<rect fill="url(#d-grid)" width="${W}" height="${H - band}"/>`);
+  }
+
+  out.push(`<path class="d-floor" d="M${X(x0)} ${Y(0)}H${X(x1)}M${X(totalRun)} ${Y(totalRise)}H${X(x1)}"/>`);
+
+  let d = `M${X(0)} ${Y(0)}`;
+  for (let i = 0; i < N; i++) {
+    d += `V${Y((i + 1) * R)}`;
+    if (i < T) d += `H${X((i + 1) * G)}`;
+  }
+  out.push(`<path class="d-stair" d="${d}V${Y(0)}Z"/>`,
+    `<path class="d-pitch" d="M${X(0)} ${Y(R)}L${X(totalRun)} ${Y(totalRise)}"/>`);
+
+  if (rail > 0) {
+    const railTop = (x) => R + (x * R) / G + rail;
+    const n = s.balusters;
+    let bd = '';
+    for (let i = 0; i < T; i++) {
+      for (let j = 0; j < n; j++) {
+        const x = i * G + ((j + 0.5) * G) / n;
+        bd += `M${X(x)} ${Y((i + 1) * R)}V${Y(railTop(x) - HANDRAIL * k)}`;
+      }
+    }
+    if (bd) out.push(`<path class="d-baluster" stroke-width="${r(Math.max(1.5, BALUSTER * k * scale))}" d="${bd}"/>`);
+    const hy = (HANDRAIL * k) / 2;
+    out.push(`<path class="d-handrail" stroke-width="${r(Math.max(3, HANDRAIL * k * scale))}" d="M${X(0)} ${Y(railTop(0) - hy)}L${X(totalRun)} ${Y(railTop(totalRun) - hy)}"/>`);
+    const nw = Math.max(4, NEWEL * k * scale);
+    const newel = (x, yBottom, yTop) =>
+      `<rect class="d-newel" x="${r(X(x) - nw / 2)}" y="${Y(yTop)}" width="${r(nw)}" height="${r((yTop - yBottom) * scale)}"/>`;
+    out.push(newel(0, 0, railTop(0) + NEWEL_CAP * k), newel(totalRun, totalRise - R, railTop(totalRun) + NEWEL_CAP * k));
+    dim(out, X(0), Y(R), X(0), Y(R + rail), -(nw / 2 + 28), 0, `Handrail ${fmt(rail)}`, nw / 2 + 4);
+  }
+
+  dim(out, X(0), Y(0), X(totalRun), Y(0), 0, 36, `${T} ${T === 1 ? 'tread' : 'treads'} @ ${fmt(G)} = ${fmt(totalRun, true)}`);
+  dim(out, X(x1), Y(0), X(x1), Y(totalRise), 32, 0, `${N} risers @ ${fmt(R)} = ${fmt(totalRise, true)}`);
+
+  // Title block along the bottom of the sheet.
+  const by = H - band;
+  const today = new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+  const meta = ['Side elevation', g >= 10 ? `grid ${fmt(GRID[s.unit], true)} squares` : '', today].filter(Boolean).join('  ·  ');
+  out.push(`<rect class="d-band" y="${by}" width="${W}" height="${band}"/><path class="d-frame" d="M0 ${by + 0.5}H${W}"/>`);
+  if (stacked) {
+    out.push(`<text class="d-title" x="16" y="${by + 24}">${esc(s.title)}</text>`,
+      `<text class="d-meta" x="16" y="${by + 44}">${esc(specs)}</text>`,
+      `<text class="d-meta" x="16" y="${by + 63}">${esc(meta)}</text>`);
+  } else {
+    out.push(`<text class="d-title" x="20" y="${by + 25}">${esc(s.title)}</text>`,
+      `<text class="d-meta" x="20" y="${by + 45}">${esc(meta)}</text>`,
+      `<text class="d-meta" x="${W - 20}" y="${by + 25}" text-anchor="end">${esc(specs)}</text>`);
+  }
+  out.push('</svg>');
+  return out.join('');
+}
+
+function el(tag, text, className) {
+  const node = document.createElement(tag);
+  node.textContent = text;
+  if (className) node.className = className;
+  return node;
+}
+
+function renderPanel() {
+  const s = state, k = s.k, T = s.risers - 1, totalRise = s.risers * s.rise;
+  const rows = [
+    ['Total rise', fmt(totalRise, true)],
+    ['Total run', fmt(T * s.run, true)],
+    ['Treads', String(T)],
+    ['Pitch', pitch(s)],
+    ['2R + T', fmt(2 * s.rise + s.run)],
+  ];
+  $('summary').replaceChildren(...rows.flatMap(([term, value]) => [el('dt', term), el('dd', value)]));
+
+  const comfort = 2 * s.rise + s.run;
+  const checks = [
+    [s.rise <= 7.75 * k + EPS, `Riser ${fmt(s.rise)}`, `${fmt(7.75 * k)} max`],
+    [s.run >= 10 * k - EPS, `Tread ${fmt(s.run)}`, `${fmt(10 * k)} min`],
+    [comfort >= 24 * k - EPS && comfort <= 25 * k + EPS, `2R + T ${fmt(comfort)}`, `${fmt(24 * k)} to ${fmt(25 * k)} walks best (rule of thumb)`],
+  ];
+  if (s.rail > 0) {
+    checks.push([s.rail >= 34 * k - EPS && s.rail <= 38 * k + EPS, `Handrail ${fmt(s.rail)}`, `${fmt(34 * k)} to ${fmt(38 * k)} above the nosings`]);
+    if (s.balusters > 0) {
+      const gap = Math.max(0, s.run / s.balusters - BALUSTER * k);
+      checks.push([gap < 4 * k, `Baluster gap ${fmt(gap)}`, `under ${fmt(4 * k)}, with ${fmt(BALUSTER * k)} balusters`]);
+    } else if (totalRise > 30 * k) {
+      checks.push([false, 'No balusters', `open side over ${fmt(30 * k)} high needs a guard`]);
+    }
+  } else if (s.risers >= 4) {
+    checks.push([false, 'No handrail', 'needed at 4 or more risers']);
+  }
+  $('checks').replaceChildren(...checks.map(([ok, what, limit]) => {
+    const li = document.createElement('li');
+    li.append(el('span', ok ? 'OK' : 'Check', `chip ${ok ? 'ok' : 'warn'}`), el('span', what, 'what'), el('span', limit, 'limit'));
+    return li;
+  }));
+}
+
+function render() {
+  const w = sheet.clientWidth, h = sheet.clientHeight;
+  if (w && h) sheet.innerHTML = drawingSVG(state, w, h);
+}
+
+function update() {
+  state = readState();
+  render();
+  renderPanel();
+  try {
+    localStorage.setItem(STORE_KEY, JSON.stringify(Object.fromEntries(FIELDS.map((id) => [id, $(id).value]))));
+  } catch (err) { /* storage is optional */ }
+}
+
+function applyUnit() {
+  const k = PER_IN[unit];
+  for (const id of LENGTHS) {
+    $(id).min = LIMITS[id][0] * k;
+    $(id).max = LIMITS[id][1] * k;
+    $(id).step = STEP[unit];
+  }
+  document.querySelectorAll('.unit').forEach((node) => { node.textContent = unit; });
+}
+
+function load(values) {
+  for (const id of FIELDS) if (values[id] != null) $(id).value = values[id];
+  if (!PER_IN[$('unit').value]) $('unit').value = 'in';
+  unit = $('unit').value;
+  applyUnit();
+  update();
+}
+
+$('unit').addEventListener('change', () => {
+  const next = $('unit').value, f = PER_IN[next] / PER_IN[unit];
+  for (const id of LENGTHS) {
+    const v = parseFloat($(id).value);
+    if (Number.isFinite(v)) $(id).value = Math.round(v * f * ROUND[next]) / ROUND[next];
+  }
+  unit = next;
+  applyUnit();
+  update();
+});
+for (const id of FIELDS) if (id !== 'unit') $(id).addEventListener('input', update);
+$('reset').addEventListener('click', () => load(EXAMPLE));
+
+// Inside a claude.ai artifact the sandbox only lets files out through the downloads capability.
+// Opened as a plain file, there is no window.claude and a normal link download works.
+const downloadsReady = window.claude && window.claude.use ? window.claude.use('downloads') : Promise.resolve(undefined);
+downloadsReady.then((downloads) => { if (downloads === null) $('exports').hidden = true; });
+const say = (msg) => { $('status').textContent = msg; };
+const fileBase = () => state.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'stair';
+
+async function offer(filename, blob) {
+  const downloads = await downloadsReady;
+  if (downloads) {
+    try {
+      const { status } = await downloads.save({ filename, data: blob });
+      say(status === 'saved' ? `Saved ${filename}` : '');
+    } catch (err) {
+      say(err && err.code === 'declined' ? 'Download cancelled' : `Could not save ${filename}`);
+    }
+    return;
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+$('save-svg').addEventListener('click', () => {
+  offer(`${fileBase()}.svg`, new Blob([drawingSVG(state, EXPORT_W, EXPORT_H)], { type: 'image/svg+xml' }));
+});
+$('save-png').addEventListener('click', async () => {
+  const img = new Image();
+  img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(drawingSVG(state, EXPORT_W, EXPORT_H));
+  await img.decode();
+  const canvas = document.createElement('canvas');
+  canvas.width = EXPORT_W * 2;
+  canvas.height = EXPORT_H * 2;
+  canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+  canvas.toBlob((blob) => offer(`${fileBase()}.png`, blob), 'image/png');
+});
+
+let saved = null;
+try { saved = JSON.parse(localStorage.getItem(STORE_KEY)); } catch (err) { /* storage is optional */ }
+load({ ...EXAMPLE, ...saved });
+new ResizeObserver(render).observe(sheet);
+</script>
+</body>
+</html>
