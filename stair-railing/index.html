@@ -111,7 +111,7 @@ body {
 
 .group { display: flex; flex-direction: column; gap: 10px; padding-top: 14px; border-top: 1px solid var(--line); }
 .group h2 {
-  display: flex; align-items: baseline; gap: 8px; margin: 0;
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; margin: 0;
   font: 600 12px/1 var(--font-display); letter-spacing: .1em; text-transform: uppercase; color: var(--muted);
 }
 .group h2 small { font: 400 11px/1 var(--font-body); letter-spacing: 0; text-transform: none; }
@@ -120,13 +120,14 @@ body {
 .fields.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .fields.sheet-fields { grid-template-columns: minmax(0, 1fr) 7.5rem; }
 .field { display: flex; flex-direction: column; gap: 4px; min-width: 0; font-size: 12px; color: var(--muted); }
+.field.wide { grid-column: 1 / -1; }
 .input { position: relative; display: flex; }
 input, select {
   width: 100%; padding: 8px 10px;
   font: 500 14px var(--font-mono); color: var(--ink);
   background: var(--field); border: 1px solid var(--line); border-radius: 4px;
 }
-#title { font-family: var(--font-body); }
+#title, select { font-family: var(--font-body); }
 /* Spinners eat the narrow fields; arrow keys still step the value. */
 input[type="number"] { appearance: textfield; -moz-appearance: textfield; }
 input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
@@ -136,7 +137,7 @@ input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-o
   font: 400 12px var(--font-mono); font-style: normal; color: var(--muted); pointer-events: none;
 }
 input:out-of-range { border-color: var(--warn); }
-input:focus-visible, select:focus-visible, .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+input:focus-visible, select:focus-visible, .btn:focus-visible, .view:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .hint { margin: 0; font-size: 12px; color: var(--muted); }
 
 .summary { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 0; }
@@ -166,8 +167,16 @@ input:focus-visible, select:focus-visible, .btn:focus-visible { outline: 2px sol
 
 .stage { display: flex; flex-direction: column; gap: 10px; min-width: 0; min-height: 0; }
 .toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; }
-.sheet-name { font: 600 13px var(--font-display); letter-spacing: .08em; text-transform: uppercase; }
-#status { margin-left: 8px; font: 400 12px var(--font-body); letter-spacing: 0; text-transform: none; color: var(--muted); }
+.view-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.views { display: inline-flex; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+.view {
+  padding: 7px 12px; cursor: pointer; border: 0; border-left: 1px solid var(--line);
+  font: 600 12px var(--font-display); letter-spacing: .06em; text-transform: uppercase;
+  color: var(--muted); background: var(--field);
+}
+.view:first-child { border-left: 0; }
+.view[aria-pressed="true"] { color: var(--bg); background: var(--ink); }
+#status { font-size: 12px; color: var(--muted); }
 .exports { display: flex; gap: 8px; }
 .sheet {
   position: relative; flex: 1; min-height: 0; overflow: hidden;
@@ -178,7 +187,7 @@ input:focus-visible, select:focus-visible, .btn:focus-visible { outline: 2px sol
 @media (max-width: 800px) {
   html, body { height: auto; }
   .app { grid-template-columns: minmax(0, 1fr); height: auto; }
-  .stage { order: -1; height: min(70vh, 560px); min-height: 340px; }
+  .stage { order: -1; height: min(72vh, 580px); min-height: 360px; }
   .panel { overflow: visible; }
 }
 </style>
@@ -188,7 +197,7 @@ input:focus-visible, select:focus-visible, .btn:focus-visible { outline: 2px sol
   <aside class="panel" aria-label="Stair settings">
     <header class="brand">
       <h1>Stair &amp; Railing Drafter</h1>
-      <p>Enter the stair and railing sizes. The side elevation redraws as you type.</p>
+      <p>Enter the stair and railing sizes. The side elevations and the plan redraw as you type.</p>
     </header>
 
     <section class="group">
@@ -202,6 +211,13 @@ input:focus-visible, select:focus-visible, .btn:focus-visible { outline: 2px sol
             <option value="in">Inches</option>
             <option value="cm">Centimeters</option>
             <option value="mm">Millimeters</option>
+          </select>
+        </label>
+        <label class="field wide" for="use"><span>Stair use (sets the code limits)</span>
+          <select id="use">
+            <option value="house">Inside a house (private stair)</option>
+            <option value="deck">Exterior, one house (private stair)</option>
+            <option value="public">Public or shared (public stair)</option>
           </select>
         </label>
       </div>
@@ -220,20 +236,50 @@ input:focus-visible, select:focus-visible, .btn:focus-visible { outline: 2px sol
           <span class="input"><input id="run" type="number" inputmode="decimal"><em class="unit">in</em></span>
         </label>
       </div>
-      <p class="hint">The top landing is the last tread, so a stair has one tread fewer than risers.</p>
+      <div class="fields">
+        <label class="field" for="width"><span>Stair width</span>
+          <span class="input"><input id="width" type="number" inputmode="decimal"><em class="unit">in</em></span>
+        </label>
+        <label class="field" for="landing"><span>Top landing depth</span>
+          <span class="input"><input id="landing" type="number" inputmode="decimal"><em class="unit">in</em></span>
+        </label>
+      </div>
+      <p class="hint">The top landing is the last tread, so a stair has one tread fewer than risers. Width is clear width, wall face to wall face or to the inside of the guard.</p>
     </section>
 
     <section class="group">
       <h2>Railing</h2>
       <div class="fields">
-        <label class="field" for="rail"><span>Handrail height</span>
+        <label class="field wide" for="left"><span>Left side (walking up)</span>
+          <select id="left">
+            <option value="wallrail">Wall with handrail</option>
+            <option value="guard">Guard with pickets</option>
+            <option value="wall">Wall, no handrail</option>
+            <option value="open">Open, no railing</option>
+          </select>
+        </label>
+        <label class="field wide" for="right"><span>Right side (walking up)</span>
+          <select id="right">
+            <option value="wallrail">Wall with handrail</option>
+            <option value="guard">Guard with pickets</option>
+            <option value="wall">Wall, no handrail</option>
+            <option value="open">Open, no railing</option>
+          </select>
+        </label>
+        <label class="field" for="rail"><span>Stair rail height</span>
           <span class="input"><input id="rail" type="number" inputmode="decimal"><em class="unit">in</em></span>
         </label>
-        <label class="field" for="balusters"><span>Balusters per tread</span>
-          <input id="balusters" type="number" inputmode="numeric" min="0" max="6" step="1">
+        <label class="field" for="landingRail"><span>Landing guard height</span>
+          <span class="input"><input id="landingRail" type="number" inputmode="decimal"><em class="unit">in</em></span>
+        </label>
+        <label class="field" for="pickets"><span>Pickets per tread</span>
+          <input id="pickets" type="number" inputmode="numeric" min="1" max="6" step="1">
+        </label>
+        <label class="field" for="picketW"><span>Picket width</span>
+          <span class="input"><input id="picketW" type="number" inputmode="decimal"><em class="unit">in</em></span>
         </label>
       </div>
-      <p class="hint">Height is measured up from the nosing line. Set it to 0 to remove the railing.</p>
+      <p class="hint">Stair rail height is measured up from the nosing line, landing guard height from the landing floor. The guard continues along the landing on its side.</p>
     </section>
 
     <section class="group">
@@ -242,9 +288,9 @@ input:focus-visible, select:focus-visible, .btn:focus-visible { outline: 2px sol
     </section>
 
     <section class="group">
-      <h2>Code check <small>IRC, US residential</small></h2>
+      <h2>Code check <small>Ontario Building Code 2024, Part 9</small></h2>
       <ul class="checks" id="checks"></ul>
-      <p class="hint">A quick check against common IRC limits. Confirm with the code that applies to your project.</p>
+      <p class="hint">A quick check against O. Reg. 163/24 limits. Confirm the details with your building department before you apply for a permit.</p>
     </section>
 
     <button type="button" class="btn" id="reset">Load example</button>
@@ -252,7 +298,14 @@ input:focus-visible, select:focus-visible, .btn:focus-visible { outline: 2px sol
 
   <section class="stage" aria-label="Drawing">
     <div class="toolbar">
-      <div class="sheet-name">Side elevation <span id="status" role="status"></span></div>
+      <div class="view-bar">
+        <div class="views" role="group" aria-label="View">
+          <button type="button" class="view" data-view="right" aria-pressed="true">Right side</button>
+          <button type="button" class="view" data-view="left" aria-pressed="false">Left side</button>
+          <button type="button" class="view" data-view="plan" aria-pressed="false">Plan</button>
+        </div>
+        <span id="status" role="status"></span>
+      </div>
       <div class="exports" id="exports">
         <button type="button" class="btn" id="save-svg">Download SVG</button>
         <button type="button" class="btn primary" id="save-png">Download PNG</button>
@@ -265,33 +318,62 @@ input:focus-visible, select:focus-visible, .btn:focus-visible { outline: 2px sol
 <script>
 const PER_IN = { in: 1, cm: 2.54, mm: 25.4 };
 const STEP = { in: 0.125, cm: 0.1, mm: 1 };
-const ROUND = { in: 10000, cm: 100, mm: 10 };
+const ROUND = { in: 10000, cm: 1000, mm: 100 };
 const GRID = { in: 12, cm: 30, mm: 300 }; // one grid square, in the unit itself
-// Length limits are in inches; risers and balusters are counts.
-const LIMITS = { rise: [1, 24], run: [1, 48], rail: [0, 60], risers: [2, 40], balusters: [0, 6] };
-const LENGTHS = ['rise', 'run', 'rail'];
-const FIELDS = ['title', 'unit', 'risers', 'rise', 'run', 'rail', 'balusters'];
-const EXAMPLE = { title: 'Example stair', unit: 'in', risers: 12, rise: 7.5, run: 10, rail: 36, balusters: 2 };
-// Part sizes in inches: 4x4 newel, 1 1/2" balusters, 2 1/2" handrail profile.
-const NEWEL = 3.5, NEWEL_CAP = 3, BALUSTER = 1.5, HANDRAIL = 2.5;
+// Length limits are in inches; risers and pickets are counts.
+const LIMITS = {
+  rise: [1, 24], run: [1, 48], width: [12, 120], landing: [12, 240],
+  rail: [12, 60], landingRail: [12, 72], picketW: [0.25, 6], risers: [2, 40], pickets: [1, 6],
+};
+const LENGTHS = ['rise', 'run', 'width', 'landing', 'rail', 'landingRail', 'picketW'];
+const NUMBERS = ['risers', 'pickets', ...LENGTHS];
+const SELECTS = ['unit', 'use', 'left', 'right'];
+const FIELDS = ['title', ...SELECTS, ...NUMBERS];
+const VIEWS = ['right', 'left', 'plan'];
+const EXAMPLE = {
+  title: 'Example stair', unit: 'in', use: 'house', view: 'right',
+  risers: 12, rise: 7.5, run: 10.25, width: 36, landing: 36,
+  left: 'wallrail', right: 'guard', rail: 36, landingRail: 42, pickets: 2, picketW: 1.5,
+};
+const SIDE_NAMES = { wallrail: 'Wall with handrail', guard: 'Guard with pickets', wall: 'Wall, no handrail', open: 'Open, no railing' };
+const SIDE_SHORT = { wallrail: 'wall handrail', guard: 'guard', wall: 'wall', open: 'open' };
+const VIEW_NAMES = { right: 'Right side elevation', left: 'Left side elevation', plan: 'Plan' };
+// OBC 2024 (O. Reg. 163/24) Part 9 limits in mm. freeRisers: most risers allowed with no handrail.
+const USES = {
+  house: { riser: [125, 200], run: [255, 355], width: 860, freeRisers: 2 },
+  deck: { riser: [125, 200], run: [255, 355], width: 860, freeRisers: 3 },
+  public: { riser: [125, 180], run: [280, Infinity], width: 900, freeRisers: 0 },
+};
+const TOL = 0.5; // mm; inch fractions do not land exactly on metric limits
+// Part sizes in inches: 4x4 newel, 2 1/2" guard top rail, 1 1/2" round wall rail
+// with 2" (50 mm) clearance to the wall, 2x4 wall with drywall, brackets 4'-0" apart at most.
+const NEWEL = 3.5, NEWEL_CAP = 3, HANDRAIL = 2.5, WALL_RAIL = 1.5, WALL_CLEAR = 2, WALL = 4.5;
+const BRACKET_MAX = 48, BRACKET_DROP = 2.5, PLAN_LEAD = 12;
 const EXPORT_W = 1600, EXPORT_H = 1000;
 const STORE_KEY = 'stair-railing-drafter';
-const EPS = 1e-6;
 
 const DRAWING_CSS = [
   '.d-bg,.d-band{fill:var(--d-paper,#fff)}',
   '.d-gridline{fill:none;stroke:var(--d-grid,#e9eef5);stroke-width:1}',
   '.d-floor{fill:none;stroke:var(--d-floor,#98a5b5);stroke-width:4}',
   '.d-stair{fill:var(--d-fill,#eef2f7);stroke:var(--d-ink,#1b2430);stroke-width:2}',
+  '.d-landing{fill:var(--d-paper,#fff);stroke:var(--d-ink,#1b2430);stroke-width:2}',
+  '.d-tread{fill:none;stroke:var(--d-ink,#1b2430);stroke-width:1}',
   '.d-pitch{fill:none;stroke:var(--d-muted,#5a6676);stroke-width:1;stroke-dasharray:6 4}',
+  '.d-walk{fill:none;stroke:var(--d-ink,#1b2430);stroke-width:1.2}',
+  '.d-dot{fill:var(--d-ink,#1b2430)}',
   '.d-baluster{fill:none;stroke:var(--d-ink,#1b2430)}',
   '.d-handrail{fill:none;stroke:var(--d-ink,#1b2430);stroke-linecap:round}',
   '.d-newel{fill:var(--d-paper,#fff);stroke:var(--d-ink,#1b2430);stroke-width:1.5}',
+  '.d-bracket{fill:none;stroke:var(--d-ink,#1b2430);stroke-width:1.5}',
+  '.d-wall{stroke:var(--d-ink,#1b2430);stroke-width:1.5}',
+  '.d-hatchline{stroke:var(--d-muted,#5a6676);stroke-width:1}',
   '.d-wit{fill:none;stroke:var(--d-muted,#5a6676);stroke-width:.75;opacity:.7}',
   '.d-dim{fill:none;stroke:var(--d-dim,#1c4fb8);stroke-width:1.2}',
   '.d-frame{fill:none;stroke:var(--d-ink,#1b2430);stroke-width:1}',
   '.d-sheet text{font-family:var(--d-font,Helvetica,Arial,sans-serif);fill:var(--d-ink,#1b2430)}',
   '.d-sheet .d-label{font-size:13px;font-weight:500;fill:var(--d-dim,#1c4fb8);text-anchor:middle;paint-order:stroke;stroke:var(--d-paper,#fff);stroke-width:10px;stroke-linejoin:round}',
+  '.d-sheet .d-note{font-size:11px;font-weight:600;letter-spacing:.04em;fill:var(--d-muted,#5a6676);text-anchor:middle;paint-order:stroke;stroke:var(--d-paper,#fff);stroke-width:6px;stroke-linejoin:round}',
   '.d-sheet .d-title{font-size:15px;font-weight:600}',
   '.d-sheet .d-meta{font-size:12px;fill:var(--d-muted,#5a6676)}',
 ].join('');
@@ -301,6 +383,7 @@ const sheet = $('sheet');
 const r = (n) => Math.round(n * 10) / 10;
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 let unit = 'in';
+let view = 'right';
 let state;
 
 function inches(v, withFeet) {
@@ -323,6 +406,8 @@ function fmt(v, withFeet = false) {
 }
 
 const pitch = (s) => `${(Math.atan2(s.rise, s.run) * 180 / Math.PI).toFixed(1)}°`;
+const hasRail = (t) => t === 'guard' || t === 'wallrail';
+const sideDepth = (t, k) => (t === 'guard' ? NEWEL * k : t === 'wall' || t === 'wallrail' ? WALL * k : 0);
 
 function readNumber(id, k) {
   const isLength = LENGTHS.includes(id), scale = isLength ? k : 1;
@@ -334,16 +419,26 @@ function readNumber(id, k) {
 
 function readState() {
   const k = PER_IN[unit];
+  const s = { title: $('title').value.trim() || 'Stair', unit, k, view, use: $('use').value, left: $('left').value, right: $('right').value };
+  for (const id of NUMBERS) s[id] = readNumber(id, k);
+  return s;
+}
+
+function geometry(s) {
+  const T = s.risers - 1, totalRise = s.risers * s.rise, totalRun = T * s.run;
   return {
-    title: $('title').value.trim() || 'Stair',
-    unit,
-    k,
-    risers: readNumber('risers', k),
-    rise: readNumber('rise', k),
-    run: readNumber('run', k),
-    rail: readNumber('rail', k),
-    balusters: readNumber('balusters', k),
+    T, totalRise, totalRun,
+    x1: totalRun + s.landing,
+    landTop: totalRise + s.landingRail,
+    railTop: (x) => s.rise + (x * s.rise) / s.run + s.rail, // top of the stair rail above x
   };
+}
+
+// Bracket positions along a wall rail, at most BRACKET_MAX apart.
+function brackets(len, k) {
+  const inset = Math.min(6 * k, len / 4), span = len - 2 * inset;
+  const n = Math.max(1, Math.ceil(span / (BRACKET_MAX * k)));
+  return Array.from({ length: n + 1 }, (_, i) => inset + (span * i) / n);
 }
 
 function dim(out, ax, ay, bx, by, ox, oy, label, gap = 6) {
@@ -356,34 +451,21 @@ function dim(out, ax, ay, bx, by, ox, oy, label, gap = 6) {
   out.push(`<text class="d-label" x="${mx}" y="${my}" dy=".35em"${turn}>${esc(label)}</text>`);
 }
 
-function drawingSVG(s, W, H) {
-  const { k, rise: R, run: G, risers: N, rail } = s;
-  const T = N - 1, totalRise = N * R, totalRun = T * G;
-  const ext = Math.max(G, 12 * k); // floor shown past each end of the stair
-  const x0 = -ext, x1 = totalRun + ext;
-  const top = rail > 0 ? totalRise + rail + NEWEL_CAP * k : totalRise;
-  const stacked = W < 960;
-  const band = stacked ? 78 : 58;
-  const pad = { l: 56, r: 56, t: 24, b: 56 + band };
-  const scale = Math.min((W - pad.l - pad.r) / (x1 - x0), (H - pad.t - pad.b) / top);
-  const ox = pad.l + (W - pad.l - pad.r - (x1 - x0) * scale) / 2 - x0 * scale;
-  const oy = H - pad.b - (H - pad.t - pad.b - top * scale) / 2;
-  const X = (x) => r(ox + x * scale);
-  const Y = (y) => r(oy - y * scale);
+// Two dimensions in a row, a to b and b to c. The second moves one row further out
+// when the labels would overlap (about 7 px per character at 13 px).
+function chain(out, [ax, ay], [bx, by], [cx, cy], ox, oy, first, second) {
+  dim(out, ax, ay, bx, by, ox, oy, first);
+  const len = Math.hypot(ox, oy);
+  const step = (first.length + second.length) * 3.6 + 16 > Math.hypot(cx - ax, cy - ay) / 2 ? 22 : 0;
+  dim(out, bx, by, cx, cy, ox + (ox / len) * step, oy + (oy / len) * step, second);
+}
 
-  const specs = [`${N} risers`, `${T} ${T === 1 ? 'tread' : 'treads'}`, `${pitch(s)} pitch`,
-    rail > 0 ? `handrail ${fmt(rail)}` : 'no railing'].join('  ·  ');
-  const out = [`<svg xmlns="http://www.w3.org/2000/svg" class="d-sheet" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(`${s.title}: ${specs}`)}">`,
-    `<style>${DRAWING_CSS}</style>`, `<rect class="d-bg" width="${W}" height="${H}"/>`];
-
-  // Grid squares at true scale, lined up with the foot of the first riser.
-  const g = GRID[s.unit] * scale;
-  if (g >= 10) {
-    out.push(`<defs><pattern id="d-grid" width="${r(g)}" height="${r(g)}" x="${X(0)}" y="${Y(0)}" patternUnits="userSpaceOnUse"><path class="d-gridline" d="M${r(g)} 0H0V${r(g)}"/></pattern></defs>`,
-      `<rect fill="url(#d-grid)" width="${W}" height="${H - band}"/>`);
-  }
-
-  out.push(`<path class="d-floor" d="M${X(x0)} ${Y(0)}H${X(x1)}M${X(totalRun)} ${Y(totalRise)}H${X(x1)}"/>`);
+// Side elevation of the left or right side. x runs up the stair from the first riser, y up from the floor.
+function drawElevation(out, s, g, X, Y, scale, dir) {
+  const { k, rise: R, run: G, risers: N } = s;
+  const { T, totalRise, totalRun, x1, landTop, railTop } = g;
+  const side = s[s.view];
+  out.push(`<path class="d-floor" d="M${X(-Math.max(G, 12 * k))} ${Y(0)}H${X(x1)}M${X(totalRun)} ${Y(totalRise)}H${X(x1)}"/>`);
 
   let d = `M${X(0)} ${Y(0)}`;
   for (let i = 0; i < N; i++) {
@@ -393,42 +475,152 @@ function drawingSVG(s, W, H) {
   out.push(`<path class="d-stair" d="${d}V${Y(0)}Z"/>`,
     `<path class="d-pitch" d="M${X(0)} ${Y(R)}L${X(totalRun)} ${Y(totalRise)}"/>`);
 
-  if (rail > 0) {
-    const railTop = (x) => R + (x * R) / G + rail;
-    const n = s.balusters;
-    let bd = '';
+  if (side === 'guard') {
+    const nw = Math.max(4, NEWEL * k * scale), sp = G / s.pickets, pw = s.picketW, hy = (HANDRAIL * k) / 2;
+    let pd = '';
     for (let i = 0; i < T; i++) {
-      for (let j = 0; j < n; j++) {
-        const x = i * G + ((j + 0.5) * G) / n;
-        bd += `M${X(x)} ${Y((i + 1) * R)}V${Y(railTop(x) - HANDRAIL * k)}`;
+      for (let j = 0; j < s.pickets; j++) {
+        const x = i * G + (j + 0.5) * sp;
+        pd += `M${X(x)} ${Y((i + 1) * R)}V${Y(railTop(x) - HANDRAIL * k)}`;
       }
     }
-    if (bd) out.push(`<path class="d-baluster" stroke-width="${r(Math.max(1.5, BALUSTER * k * scale))}" d="${bd}"/>`);
-    const hy = (HANDRAIL * k) / 2;
-    out.push(`<path class="d-handrail" stroke-width="${r(Math.max(3, HANDRAIL * k * scale))}" d="M${X(0)} ${Y(railTop(0) - hy)}L${X(totalRun)} ${Y(railTop(totalRun) - hy)}"/>`);
-    const nw = Math.max(4, NEWEL * k * scale);
-    const newel = (x, yBottom, yTop) =>
+    // Landing pickets: fewest that keep every gap no wider than the gaps on the stair.
+    const xa = totalRun + (NEWEL * k) / 2, len = x1 - NEWEL * k - xa;
+    const n = Math.max(0, Math.ceil((len + pw) / sp - 1)), gap = (len - n * pw) / (n + 1);
+    for (let i = 0; i < n; i++) {
+      pd += `M${X(xa + gap * (i + 1) + pw * (i + 0.5))} ${Y(totalRise)}V${Y(landTop - HANDRAIL * k)}`;
+    }
+    out.push(`<path class="d-baluster" stroke-width="${r(Math.max(1.5, pw * scale))}" d="${pd}"/>`,
+      `<path class="d-handrail" stroke-width="${r(Math.max(3, HANDRAIL * k * scale))}" d="M${X(0)} ${Y(railTop(0) - hy)}L${X(totalRun)} ${Y(railTop(totalRun) - hy)}M${X(totalRun)} ${Y(landTop - hy)}H${X(x1 - (NEWEL * k) / 2)}"/>`);
+    const post = (x, yBottom, yTop) =>
       `<rect class="d-newel" x="${r(X(x) - nw / 2)}" y="${Y(yTop)}" width="${r(nw)}" height="${r((yTop - yBottom) * scale)}"/>`;
-    out.push(newel(0, 0, railTop(0) + NEWEL_CAP * k), newel(totalRun, totalRise - R, railTop(totalRun) + NEWEL_CAP * k));
-    dim(out, X(0), Y(R), X(0), Y(R + rail), -(nw / 2 + 28), 0, `Handrail ${fmt(rail)}`, nw / 2 + 4);
+    const cap = NEWEL_CAP * k;
+    out.push(post(0, 0, railTop(0) + cap),
+      post(totalRun, totalRise - R, Math.max(railTop(totalRun), landTop) + cap),
+      post(x1 - (NEWEL * k) / 2, totalRise - R, landTop + cap));
+    dim(out, X(0), Y(R), X(0), Y(R + s.rail), -(nw / 2 + 28) * dir, 0, `Rail ${fmt(s.rail)}`, nw / 2 + 4);
+  } else if (side === 'wallrail') {
+    const rr = (WALL_RAIL * k) / 2;
+    let bd = '', dots = '';
+    for (const x of brackets(totalRun, k)) {
+      const yb = railTop(x) - 2 * rr;
+      bd += `M${X(x)} ${Y(yb)}V${Y(yb - BRACKET_DROP * k)}`;
+      dots += `<circle class="d-dot" cx="${X(x)}" cy="${Y(yb - BRACKET_DROP * k)}" r="2.5"/>`;
+    }
+    out.push(`<path class="d-bracket" d="${bd}"/>${dots}`,
+      `<path class="d-handrail" stroke-width="${r(Math.max(2.5, WALL_RAIL * k * scale))}" d="M${X(0)} ${Y(railTop(0) - rr)}L${X(totalRun)} ${Y(railTop(totalRun) - rr)}"/>`);
+    dim(out, X(0), Y(R), X(0), Y(R + s.rail), -28 * dir, 0, `Rail ${fmt(s.rail)}`);
   }
 
-  dim(out, X(0), Y(0), X(totalRun), Y(0), 0, 36, `${T} ${T === 1 ? 'tread' : 'treads'} @ ${fmt(G)} = ${fmt(totalRun, true)}`);
-  dim(out, X(x1), Y(0), X(x1), Y(totalRise), 32, 0, `${N} risers @ ${fmt(R)} = ${fmt(totalRise, true)}`);
+  chain(out, [X(0), Y(0)], [X(totalRun), Y(0)], [X(x1), Y(0)], 0, 36,
+    `${T} ${T === 1 ? 'tread' : 'treads'} @ ${fmt(G)} = ${fmt(totalRun, true)}`, `Landing ${fmt(s.landing, true)}`);
+  const riseLabel = `${N} risers @ ${fmt(R)} = ${fmt(totalRise, true)}`;
+  if (side === 'guard') {
+    chain(out, [X(x1), Y(0)], [X(x1), Y(totalRise)], [X(x1), Y(landTop)], 32 * dir, 0, riseLabel, `Guard ${fmt(s.landingRail)}`);
+  } else {
+    dim(out, X(x1), Y(0), X(x1), Y(totalRise), 32 * dir, 0, riseLabel);
+  }
+}
+
+// Plan, looking down. x runs up the stair from the first riser; y runs across, 0 on the right side, width on the left.
+function drawPlan(out, s, g, X, Y, scale) {
+  const { k, run: G, width: Wd } = s;
+  const { T, totalRun, x1 } = g;
+  const x0 = -PLAN_LEAD * k;
+  out.push('<defs><pattern id="d-hatch" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><path class="d-hatchline" d="M0 0V7"/></pattern></defs>',
+    `<rect class="d-stair" x="${X(0)}" y="${Y(Wd)}" width="${r(totalRun * scale)}" height="${r(Wd * scale)}"/>`,
+    `<rect class="d-landing" x="${X(totalRun)}" y="${Y(Wd)}" width="${r(s.landing * scale)}" height="${r(Wd * scale)}"/>`);
+  let d = '';
+  for (let i = 1; i < T; i++) d += `M${X(i * G)} ${Y(0)}V${Y(Wd)}`;
+  if (d) out.push(`<path class="d-tread" d="${d}"/>`);
+
+  const ay = Y(Wd / 2), ax0 = X(G / 2), ax1 = X(totalRun + Math.min(s.landing / 2, 12 * k));
+  out.push(`<path class="d-walk" d="M${ax0} ${ay}H${ax1}M${r(ax1 - 9)} ${r(ay - 5)}L${ax1} ${ay}L${r(ax1 - 9)} ${r(ay + 5)}"/>`,
+    `<circle class="d-dot" cx="${ax0}" cy="${ay}" r="3"/>`,
+    `<text class="d-note" x="${ax0}" y="${r(ay - 9)}">UP</text>`,
+    `<text class="d-note" x="${X(totalRun + s.landing / 2)}" y="${Y(Wd / 4)}" dy=".35em">LANDING</text>`);
+
+  for (const side of ['left', 'right']) {
+    const t = s[side], e = side === 'left' ? Wd : 0, o = side === 'left' ? 1 : -1;
+    if (t === 'wall' || t === 'wallrail') {
+      out.push(`<rect class="d-wall" fill="url(#d-hatch)" x="${X(x0)}" y="${Y(Math.max(e, e + o * WALL * k))}" width="${r((x1 - x0) * scale)}" height="${r(WALL * k * scale)}"/>`);
+    }
+    if (t === 'wallrail') {
+      const c = e - o * (WALL_CLEAR + WALL_RAIL / 2) * k, hw = Math.max(1, (WALL_RAIL * k * scale) / 2);
+      let bd = '';
+      for (const x of brackets(totalRun, k)) bd += `M${X(x)} ${r(Y(c) - o * hw)}V${Y(e)}`;
+      out.push(`<path class="d-bracket" d="${bd}"/>`,
+        `<rect class="d-newel" x="${X(0)}" y="${r(Y(c) - hw)}" width="${r(totalRun * scale)}" height="${r(hw * 2)}"/>`);
+    } else if (t === 'guard') {
+      const c = e + (o * NEWEL * k) / 2, hw = Math.max(1.5, (HANDRAIL * k * scale) / 2), nw = Math.max(4, NEWEL * k * scale);
+      out.push(`<rect class="d-newel" x="${X(0)}" y="${r(Y(c) - hw)}" width="${r((x1 - (NEWEL * k) / 2) * scale)}" height="${r(hw * 2)}"/>`);
+      for (const x of [0, totalRun, x1 - (NEWEL * k) / 2]) {
+        out.push(`<rect class="d-newel" x="${r(X(x) - nw / 2)}" y="${r(Y(c) - nw / 2)}" width="${r(nw)}" height="${r(nw)}"/>`);
+      }
+    }
+    const edge = Y(e + o * sideDepth(t, k));
+    out.push(`<text class="d-note" x="${X(totalRun / 2)}" y="${r(edge + (o > 0 ? -10 : 19))}">${esc(SIDE_NAMES[t])}</text>`);
+  }
+
+  const by = Y(-sideDepth(s.right, k));
+  chain(out, [X(0), by], [X(totalRun), by], [X(x1), by], 0, 44,
+    `${T} ${T === 1 ? 'tread' : 'treads'} @ ${fmt(G)} = ${fmt(totalRun, true)}`, `Landing ${fmt(s.landing, true)}`);
+  dim(out, X(x0), Y(0), X(x0), Y(Wd), -24, 0, `Width ${fmt(Wd, true)}`);
+}
+
+function drawingSVG(s, W, H) {
+  const k = s.k, g = geometry(s), plan = s.view === 'plan', dir = s.view === 'left' ? -1 : 1;
+  const stacked = W < 960;
+  const band = stacked ? 96 : 58;
+  const pad = plan ? { l: 64, r: 24, t: 36, b: 88 + band } : { l: 72, r: 72, t: 24, b: 72 + band };
+  let e;
+  if (plan) {
+    e = { x0: -PLAN_LEAD * k, x1: g.x1, y0: -sideDepth(s.right, k), y1: s.width + sideDepth(s.left, k) };
+  } else {
+    const side = s[s.view];
+    const top = side === 'guard' ? Math.max(g.railTop(g.totalRun), g.landTop) + NEWEL_CAP * k
+      : side === 'wallrail' ? g.railTop(g.totalRun) : g.totalRise;
+    e = { x0: -Math.max(s.run, 12 * k), x1: g.x1, y0: 0, y1: top };
+  }
+  const aw = W - pad.l - pad.r, ah = H - pad.t - pad.b;
+  const scale = Math.min(aw / (e.x1 - e.x0), ah / (e.y1 - e.y0));
+  const cx = pad.l + aw / 2, cy = pad.t + ah / 2, mx = (e.x0 + e.x1) / 2, my = (e.y0 + e.y1) / 2;
+  const X = (x) => r(cx + dir * (x - mx) * scale); // the left side is drawn mirrored, rising to the left
+  const Y = (y) => r(cy - (y - my) * scale);
+
+  const sides = [s.left, s.right];
+  const specs = [`${s.risers} risers`, `${g.T} ${g.T === 1 ? 'tread' : 'treads'}`, `${pitch(s)} pitch`, `${fmt(s.width, true)} wide`].join('  ·  ');
+  const railing = [`Left ${SIDE_SHORT[s.left]}`, `right ${SIDE_SHORT[s.right]}`];
+  if (sides.some(hasRail)) railing.push(`rail ${fmt(s.rail)}`);
+  if (sides.includes('guard')) railing.push(`landing guard ${fmt(s.landingRail)}`);
+  const out = [`<svg xmlns="http://www.w3.org/2000/svg" class="d-sheet" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(`${s.title}, ${VIEW_NAMES[s.view]}: ${specs}`)}">`,
+    `<style>${DRAWING_CSS}</style>`, `<rect class="d-bg" width="${W}" height="${H}"/>`];
+
+  // Grid squares at true scale, lined up with the foot of the first riser.
+  const gs = GRID[s.unit] * scale;
+  if (gs >= 10) {
+    out.push(`<defs><pattern id="d-grid" width="${r(gs)}" height="${r(gs)}" x="${X(0)}" y="${Y(0)}" patternUnits="userSpaceOnUse"><path class="d-gridline" d="M${r(gs)} 0H0V${r(gs)}"/></pattern></defs>`,
+      `<rect fill="url(#d-grid)" width="${W}" height="${H - band}"/>`);
+  }
+
+  if (plan) drawPlan(out, s, g, X, Y, scale);
+  else drawElevation(out, s, g, X, Y, scale, dir);
 
   // Title block along the bottom of the sheet.
   const by = H - band;
   const today = new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-  const meta = ['Side elevation', g >= 10 ? `grid ${fmt(GRID[s.unit], true)} squares` : '', today].filter(Boolean).join('  ·  ');
+  const meta = [VIEW_NAMES[s.view], gs >= 10 ? `grid ${fmt(GRID[s.unit], true)} squares` : '', today].filter(Boolean).join('  ·  ');
   out.push(`<rect class="d-band" y="${by}" width="${W}" height="${band}"/><path class="d-frame" d="M0 ${by + 0.5}H${W}"/>`);
   if (stacked) {
     out.push(`<text class="d-title" x="16" y="${by + 24}">${esc(s.title)}</text>`,
       `<text class="d-meta" x="16" y="${by + 44}">${esc(specs)}</text>`,
-      `<text class="d-meta" x="16" y="${by + 63}">${esc(meta)}</text>`);
+      `<text class="d-meta" x="16" y="${by + 63}">${esc(railing.join('  ·  '))}</text>`,
+      `<text class="d-meta" x="16" y="${by + 82}">${esc(meta)}</text>`);
   } else {
     out.push(`<text class="d-title" x="20" y="${by + 25}">${esc(s.title)}</text>`,
       `<text class="d-meta" x="20" y="${by + 45}">${esc(meta)}</text>`,
-      `<text class="d-meta" x="${W - 20}" y="${by + 25}" text-anchor="end">${esc(specs)}</text>`);
+      `<text class="d-meta" x="${W - 20}" y="${by + 25}" text-anchor="end">${esc(specs)}</text>`,
+      `<text class="d-meta" x="${W - 20}" y="${by + 45}" text-anchor="end">${esc(railing.join('  ·  '))}</text>`);
   }
   out.push('</svg>');
   return out.join('');
@@ -442,32 +634,51 @@ function el(tag, text, className) {
 }
 
 function renderPanel() {
-  const s = state, k = s.k, T = s.risers - 1, totalRise = s.risers * s.rise;
+  const s = state, use = USES[s.use], g = geometry(s);
+  const mm = (v) => (v / s.k) * 25.4;
+  const atLeast = (v, limit) => mm(v) >= limit - TOL;
+  const atMost = (v, limit) => mm(v) <= limit + TOL;
+  // The code is metric; in inches show the converted limit too.
+  const lim = (m) => (s.unit === 'in' ? `${inches(m / 25.4)} (${m} mm)` : s.unit === 'cm' ? `${m / 10} cm` : `${m} mm`);
+
   const rows = [
-    ['Total rise', fmt(totalRise, true)],
-    ['Total run', fmt(T * s.run, true)],
-    ['Treads', String(T)],
+    ['Total rise', fmt(g.totalRise, true)],
+    ['Total run', fmt(g.totalRun, true)],
+    ['Run with landing', fmt(g.x1, true)],
+    ['Treads', String(g.T)],
     ['Pitch', pitch(s)],
-    ['2R + T', fmt(2 * s.rise + s.run)],
   ];
   $('summary').replaceChildren(...rows.flatMap(([term, value]) => [el('dt', term), el('dd', value)]));
 
-  const comfort = 2 * s.rise + s.run;
+  const sides = [s.left, s.right];
+  const rails = sides.filter(hasRail).length;
+  const hasGuard = sides.includes('guard');
+  const landingMin = s.use === 'public' ? Math.min(Math.round(mm(s.width)), 1100) : 860;
   const checks = [
-    [s.rise <= 7.75 * k + EPS, `Riser ${fmt(s.rise)}`, `${fmt(7.75 * k)} max`],
-    [s.run >= 10 * k - EPS, `Tread ${fmt(s.run)}`, `${fmt(10 * k)} min`],
-    [comfort >= 24 * k - EPS && comfort <= 25 * k + EPS, `2R + T ${fmt(comfort)}`, `${fmt(24 * k)} to ${fmt(25 * k)} walks best (rule of thumb)`],
+    [atLeast(s.rise, use.riser[0]) && atMost(s.rise, use.riser[1]), `Riser ${fmt(s.rise)}`, `${lim(use.riser[0])} to ${lim(use.riser[1])}`],
+    [atLeast(s.run, use.run[0]) && atMost(s.run, use.run[1]), `Run ${fmt(s.run)}`,
+      use.run[1] === Infinity ? `${lim(use.run[0])} min` : `${lim(use.run[0])} to ${lim(use.run[1])}`],
+    [atLeast(s.width, use.width), `Width ${fmt(s.width)}`, `${lim(use.width)} min`],
+    [atLeast(s.landing, landingMin), `Landing ${fmt(s.landing)}`, `${lim(landingMin)} min`],
   ];
-  if (s.rail > 0) {
-    checks.push([s.rail >= 34 * k - EPS && s.rail <= 38 * k + EPS, `Handrail ${fmt(s.rail)}`, `${fmt(34 * k)} to ${fmt(38 * k)} above the nosings`]);
-    if (s.balusters > 0) {
-      const gap = Math.max(0, s.run / s.balusters - BALUSTER * k);
-      checks.push([gap < 4 * k, `Baluster gap ${fmt(gap)}`, `under ${fmt(4 * k)}, with ${fmt(BALUSTER * k)} balusters`]);
-    } else if (totalRise > 30 * k) {
-      checks.push([false, 'No balusters', `open side over ${fmt(30 * k)} high needs a guard`]);
-    }
-  } else if (s.risers >= 4) {
-    checks.push([false, 'No handrail', 'needed at 4 or more risers']);
+  if (s.risers > use.freeRisers) {
+    const needed = mm(s.width) >= 1100 - TOL ? 2 : 1;
+    checks.push([rails >= needed, rails === 2 ? 'Handrails both sides' : rails ? 'Handrail one side' : 'No handrail',
+      needed === 2 ? 'both sides when 1100 mm or wider' : use.freeRisers ? `one side above ${use.freeRisers} risers` : 'at least one side']);
+  }
+  if (rails) {
+    const lo = hasGuard ? 900 : 865; // a guard top that is also the handrail must meet both
+    checks.push([atLeast(s.rail, lo) && atMost(s.rail, 1070), `Stair rail ${fmt(s.rail)}`, `${lim(lo)} to ${lim(1070)} above nosings`]);
+  }
+  if (hasGuard) {
+    const need = s.use === 'public' || (s.use === 'deck' && mm(g.totalRise) > 1800) ? 1070 : 900;
+    const where = s.use === 'house' ? ' inside a house' : s.use === 'deck' ? (need === 900 ? ', deck 1800 mm high or less' : ', deck over 1800 mm high') : '';
+    checks.push([atLeast(s.landingRail, need), `Landing guard ${fmt(s.landingRail)}`, `${lim(need)} min${where}`]);
+    const gap = Math.max(0, s.run / s.pickets - s.picketW);
+    checks.push([mm(gap) < 100, `Picket gap ${fmt(gap)}`, `under ${lim(100)}`]);
+  }
+  for (const [name, t] of [['Left', s.left], ['Right', s.right]]) {
+    if (t === 'open' && mm(g.totalRise) > 600) checks.push([false, `${name} side open`, `guard needed where the drop is over ${lim(600)}`]);
   }
   $('checks').replaceChildren(...checks.map(([ok, what, limit]) => {
     const li = document.createElement('li');
@@ -483,10 +694,11 @@ function render() {
 
 function update() {
   state = readState();
+  document.querySelectorAll('.view').forEach((btn) => btn.setAttribute('aria-pressed', String(btn.dataset.view === view)));
   render();
   renderPanel();
   try {
-    localStorage.setItem(STORE_KEY, JSON.stringify(Object.fromEntries(FIELDS.map((id) => [id, $(id).value]))));
+    localStorage.setItem(STORE_KEY, JSON.stringify({ ...Object.fromEntries(FIELDS.map((id) => [id, $(id).value])), view }));
   } catch (err) { /* storage is optional */ }
 }
 
@@ -502,8 +714,9 @@ function applyUnit() {
 
 function load(values) {
   for (const id of FIELDS) if (values[id] != null) $(id).value = values[id];
-  if (!PER_IN[$('unit').value]) $('unit').value = 'in';
+  for (const id of SELECTS) if (!$(id).value) $(id).value = EXAMPLE[id]; // a saved option that no longer exists
   unit = $('unit').value;
+  view = VIEWS.includes(values.view) ? values.view : EXAMPLE.view;
   applyUnit();
   update();
 }
@@ -519,6 +732,7 @@ $('unit').addEventListener('change', () => {
   update();
 });
 for (const id of FIELDS) if (id !== 'unit') $(id).addEventListener('input', update);
+document.querySelectorAll('.view').forEach((btn) => btn.addEventListener('click', () => { view = btn.dataset.view; update(); }));
 $('reset').addEventListener('click', () => load(EXAMPLE));
 
 // Inside a claude.ai artifact the sandbox only lets files out through the downloads capability.
@@ -526,7 +740,10 @@ $('reset').addEventListener('click', () => load(EXAMPLE));
 const downloadsReady = window.claude && window.claude.use ? window.claude.use('downloads') : Promise.resolve(undefined);
 downloadsReady.then((downloads) => { if (downloads === null) $('exports').hidden = true; });
 const say = (msg) => { $('status').textContent = msg; };
-const fileBase = () => state.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'stair';
+const fileBase = () => {
+  const name = state.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'stair';
+  return `${name}-${state.view === 'plan' ? 'plan' : `${state.view}-side`}`;
+};
 
 async function offer(filename, blob) {
   const downloads = await downloadsReady;
