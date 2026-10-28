@@ -155,6 +155,17 @@ input:focus-visible, select:focus-visible, .btn:focus-visible, .view:focus-visib
 .checks .what { font-family: var(--font-mono); font-size: 13px; font-variant-numeric: tabular-nums; }
 .checks .limit { font-size: 12px; color: var(--muted); }
 
+.materials { width: 100%; border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; }
+.materials th, .materials td { padding: 4px 0 4px 8px; text-align: right; vertical-align: baseline; }
+.materials th:first-child, .materials td:first-child { padding-left: 0; text-align: left; }
+.materials thead th { font-weight: 500; color: var(--muted); border-bottom: 1px solid var(--line); }
+.materials td { font-family: var(--font-mono); white-space: nowrap; }
+.materials td:first-child { font-family: var(--font-body); white-space: normal; }
+.materials .part-group th {
+  padding-top: 10px; text-align: left;
+  font: 600 11px var(--font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--muted);
+}
+
 .btn {
   padding: 8px 14px; cursor: pointer;
   font: 500 13px var(--font-body); color: var(--ink);
@@ -190,6 +201,9 @@ input:focus-visible, select:focus-visible, .btn:focus-visible, .view:focus-visib
   .stage { order: -1; height: min(72vh, 580px); min-height: 360px; }
   .panel { overflow: visible; }
 }
+@media (max-width: 420px) {
+  .view { padding: 7px 8px; letter-spacing: .03em; }
+}
 </style>
 </head>
 <body>
@@ -197,7 +211,7 @@ input:focus-visible, select:focus-visible, .btn:focus-visible, .view:focus-visib
   <aside class="panel" aria-label="Stair settings">
     <header class="brand">
       <h1>Stair &amp; Railing Drafter</h1>
-      <p>Enter the stair and railing sizes. The side elevations and the plan redraw as you type.</p>
+      <p>Enter the stair and railing sizes. The side elevations, plan and material list update as you type.</p>
     </header>
 
     <section class="group">
@@ -288,6 +302,12 @@ input:focus-visible, select:focus-visible, .btn:focus-visible, .view:focus-visib
     </section>
 
     <section class="group">
+      <h2>Material list</h2>
+      <table class="materials" id="materials"></table>
+      <p class="hint">Rails are cut to fit between posts, measured along the slope. Pickets are measured at their centre, from the tread or landing to the underside of the top rail. Posts are the length drawn; add what your anchor needs. Stock is the next length up: rails 8' to 16' (spliced in equal pieces when longer), stringers up to 24'.</p>
+    </section>
+
+    <section class="group">
       <h2>Code check <small>Ontario Building Code 2024, Part 9</small></h2>
       <ul class="checks" id="checks"></ul>
       <p class="hint">A quick check against O. Reg. 163/24 limits. Confirm the details with your building department before you apply for a permit.</p>
@@ -303,6 +323,7 @@ input:focus-visible, select:focus-visible, .btn:focus-visible, .view:focus-visib
           <button type="button" class="view" data-view="right" aria-pressed="true">Right side</button>
           <button type="button" class="view" data-view="left" aria-pressed="false">Left side</button>
           <button type="button" class="view" data-view="plan" aria-pressed="false">Plan</button>
+          <button type="button" class="view" data-view="materials" aria-pressed="false">Materials</button>
         </div>
         <span id="status" role="status"></span>
       </div>
@@ -329,7 +350,7 @@ const LENGTHS = ['rise', 'run', 'width', 'landing', 'rail', 'landingRail', 'pick
 const NUMBERS = ['risers', 'pickets', ...LENGTHS];
 const SELECTS = ['unit', 'use', 'left', 'right'];
 const FIELDS = ['title', ...SELECTS, ...NUMBERS];
-const VIEWS = ['right', 'left', 'plan'];
+const VIEWS = ['right', 'left', 'plan', 'materials'];
 const EXAMPLE = {
   title: 'Example stair', unit: 'in', use: 'house', view: 'right',
   risers: 12, rise: 7.5, run: 10.25, width: 36, landing: 36,
@@ -337,7 +358,9 @@ const EXAMPLE = {
 };
 const SIDE_NAMES = { wallrail: 'Wall with handrail', guard: 'Guard with pickets', wall: 'Wall, no handrail', open: 'Open, no railing' };
 const SIDE_SHORT = { wallrail: 'wall handrail', guard: 'guard', wall: 'wall', open: 'open' };
-const VIEW_NAMES = { right: 'Right side elevation', left: 'Left side elevation', plan: 'Plan' };
+const VIEW_NAMES = { right: 'Right side elevation', left: 'Left side elevation', plan: 'Plan', materials: 'Material list' };
+const VIEW_FILES = { right: 'right-side', left: 'left-side', plan: 'plan', materials: 'materials' };
+const STOCK_FT = { rail: [8, 10, 12, 14, 16], stringer: [8, 10, 12, 14, 16, 18, 20, 24] };
 // OBC 2024 (O. Reg. 163/24) Part 9 limits in mm. freeRisers: most risers allowed with no handrail.
 const USES = {
   house: { riser: [125, 200], run: [255, 355], width: 860, freeRisers: 2 },
@@ -374,6 +397,9 @@ const DRAWING_CSS = [
   '.d-sheet text{font-family:var(--d-font,Helvetica,Arial,sans-serif);fill:var(--d-ink,#1b2430)}',
   '.d-sheet .d-label{font-size:13px;font-weight:500;fill:var(--d-dim,#1c4fb8);text-anchor:middle;paint-order:stroke;stroke:var(--d-paper,#fff);stroke-width:10px;stroke-linejoin:round}',
   '.d-sheet .d-note{font-size:11px;font-weight:600;letter-spacing:.04em;fill:var(--d-muted,#5a6676);text-anchor:middle;paint-order:stroke;stroke:var(--d-paper,#fff);stroke-width:6px;stroke-linejoin:round}',
+  '.d-rule{fill:none;stroke:var(--d-grid,#e9eef5);stroke-width:1}',
+  '.d-sheet .d-cell{font-size:13px;font-variant-numeric:tabular-nums}',
+  '.d-sheet .d-head{font-size:12px;font-weight:600;fill:var(--d-muted,#5a6676)}',
   '.d-sheet .d-title{font-size:15px;font-weight:600}',
   '.d-sheet .d-meta{font-size:12px;fill:var(--d-muted,#5a6676)}',
 ].join('');
@@ -426,13 +452,69 @@ function readState() {
 
 function geometry(s) {
   const T = s.risers - 1, totalRise = s.risers * s.rise, totalRun = T * s.run;
+  const slope = Math.hypot(s.run, s.rise) / s.run; // length along the pitch per unit of run
+  const nw = NEWEL * s.k;
   return {
     T, totalRise, totalRun,
     x1: totalRun + s.landing,
     landTop: totalRise + s.landingRail,
     railTop: (x) => s.rise + (x * s.rise) / s.run + s.rail, // top of the stair rail above x
+    wallRailLen: totalRun * slope, // first nosing to last nosing
+    stairRailLen: Math.max(0, totalRun - nw) * slope, // between the bottom and top newel faces
+    landingRailLen: s.landing - 1.5 * nw, // between the top newel and the landing end post
   };
 }
+
+// Landing pickets: the fewest that keep every gap no wider than the gaps on the stair.
+function landingPickets(s, g) {
+  const sp = s.run / s.pickets, pw = s.picketW;
+  const xa = g.totalRun + (NEWEL * s.k) / 2, len = g.x1 - NEWEL * s.k - xa;
+  const n = Math.max(0, Math.ceil((len + pw) / sp - 1));
+  return { xa, n, gap: (len - n * pw) / (n + 1) };
+}
+
+// Next stock length up. A rail longer than its longest stock splits into equal spliced pieces;
+// a stringer has to be one board.
+function stock(len, k, kind) {
+  const inches = len / k, list = STOCK_FT[kind], longest = list[list.length - 1];
+  const pieces = kind === 'rail' ? Math.max(1, Math.ceil(inches / (longest * 12) - 1e-9)) : 1;
+  const ft = list.find((f) => f * 12 >= inches / pieces - 1e-9);
+  if (!ft) return `over ${longest}'`;
+  return pieces > 1 ? `${pieces} × ${ft}'` : `${ft}'`;
+}
+
+// Cut list. Every tread repeats the same picket positions, so each position is one length.
+function materials(s) {
+  const g = geometry(s), k = s.k, cap = NEWEL_CAP * k;
+  const groups = [{ name: 'Stair', rows: [
+    { part: 'Stringer, each', len: Math.hypot(g.totalRun, g.totalRise), stock: 'stringer' },
+    { part: 'Treads', qty: g.T, len: s.width },
+    { part: 'Risers', qty: s.risers, len: s.width },
+  ] }];
+  for (const side of ['left', 'right']) {
+    const t = s[side], rows = [];
+    if (t === 'wallrail') {
+      rows.push({ part: 'Handrail', qty: 1, len: g.wallRailLen, stock: 'rail' },
+        { part: 'Handrail brackets', qty: brackets(g.totalRun, k).length });
+    } else if (t === 'guard') {
+      const sp = s.run / s.pickets;
+      rows.push({ part: 'Stair top rail', qty: 1, len: g.stairRailLen, stock: 'rail' },
+        { part: 'Landing top rail', qty: 1, len: g.landingRailLen, stock: 'rail' });
+      for (let j = 0; j < s.pickets; j++) {
+        rows.push({ part: 'Stair pickets', qty: g.T, len: ((j + 0.5) * sp * s.rise) / s.run + s.rail - HANDRAIL * k });
+      }
+      rows.push({ part: 'Landing pickets', qty: landingPickets(s, g).n, len: s.landingRail - HANDRAIL * k },
+        { part: 'Bottom newel', qty: 1, len: s.rise + s.rail + cap },
+        { part: 'Top newel', qty: 1, len: Math.max(s.rail, s.landingRail) + cap + s.rise },
+        { part: 'Landing end post', qty: 1, len: s.landingRail + cap + s.rise });
+    }
+    if (rows.length) groups.push({ name: `${side === 'left' ? 'Left' : 'Right'} side: ${SIDE_NAMES[t].toLowerCase()}`, rows: rows.filter((m) => m.qty !== 0) });
+  }
+  return groups;
+}
+
+// One cut list row as text: part, quantity, length (feet-inches for stock items), stock.
+const cells = (m, s) => [m.part, m.qty == null ? '' : String(m.qty), m.len == null ? '' : fmt(m.len, Boolean(m.stock)), m.stock ? stock(m.len, s.k, m.stock) : ''];
 
 // Bracket positions along a wall rail, at most BRACKET_MAX apart.
 function brackets(len, k) {
@@ -460,6 +542,16 @@ function chain(out, [ax, ay], [bx, by], [cx, cy], ox, oy, first, second) {
   dim(out, bx, by, cx, cy, ox + (ox / len) * step, oy + (oy / len) * step, second);
 }
 
+// A length label set along a rail, on its upper side, turned to read left to right.
+function railLabel(out, x1, y1, x2, y2, lift, text) {
+  let a = (Math.atan2(y2 - y1, x2 - x1) * 180) / Math.PI;
+  if (a > 90) a -= 180;
+  else if (a < -90) a += 180;
+  const rad = (a * Math.PI) / 180;
+  const mx = r((x1 + x2) / 2 + Math.sin(rad) * lift), my = r((y1 + y2) / 2 - Math.cos(rad) * lift);
+  out.push(`<text class="d-label" x="${mx}" y="${my}" dy=".35em" transform="rotate(${r(a)} ${mx} ${my})">${esc(text)}</text>`);
+}
+
 // Side elevation of the left or right side. x runs up the stair from the first riser, y up from the floor.
 function drawElevation(out, s, g, X, Y, scale, dir) {
   const { k, rise: R, run: G, risers: N } = s;
@@ -484,23 +576,24 @@ function drawElevation(out, s, g, X, Y, scale, dir) {
         pd += `M${X(x)} ${Y((i + 1) * R)}V${Y(railTop(x) - HANDRAIL * k)}`;
       }
     }
-    // Landing pickets: fewest that keep every gap no wider than the gaps on the stair.
-    const xa = totalRun + (NEWEL * k) / 2, len = x1 - NEWEL * k - xa;
-    const n = Math.max(0, Math.ceil((len + pw) / sp - 1)), gap = (len - n * pw) / (n + 1);
+    const { xa, n, gap } = landingPickets(s, g);
     for (let i = 0; i < n; i++) {
       pd += `M${X(xa + gap * (i + 1) + pw * (i + 0.5))} ${Y(totalRise)}V${Y(landTop - HANDRAIL * k)}`;
     }
+    const rw = Math.max(3, HANDRAIL * k * scale), endX = x1 - (NEWEL * k) / 2;
     out.push(`<path class="d-baluster" stroke-width="${r(Math.max(1.5, pw * scale))}" d="${pd}"/>`,
-      `<path class="d-handrail" stroke-width="${r(Math.max(3, HANDRAIL * k * scale))}" d="M${X(0)} ${Y(railTop(0) - hy)}L${X(totalRun)} ${Y(railTop(totalRun) - hy)}M${X(totalRun)} ${Y(landTop - hy)}H${X(x1 - (NEWEL * k) / 2)}"/>`);
+      `<path class="d-handrail" stroke-width="${r(rw)}" d="M${X(0)} ${Y(railTop(0) - hy)}L${X(totalRun)} ${Y(railTop(totalRun) - hy)}M${X(totalRun)} ${Y(landTop - hy)}H${X(endX)}"/>`);
     const post = (x, yBottom, yTop) =>
       `<rect class="d-newel" x="${r(X(x) - nw / 2)}" y="${Y(yTop)}" width="${r(nw)}" height="${r((yTop - yBottom) * scale)}"/>`;
     const cap = NEWEL_CAP * k;
     out.push(post(0, 0, railTop(0) + cap),
       post(totalRun, totalRise - R, Math.max(railTop(totalRun), landTop) + cap),
-      post(x1 - (NEWEL * k) / 2, totalRise - R, landTop + cap));
+      post(endX, totalRise - R, landTop + cap));
+    railLabel(out, X(0), Y(railTop(0) - hy), X(totalRun), Y(railTop(totalRun) - hy), rw / 2 + 10, `Top rail ${fmt(g.stairRailLen, true)}`);
+    railLabel(out, X(totalRun), Y(landTop - hy), X(endX), Y(landTop - hy), rw / 2 + 10, fmt(g.landingRailLen, true));
     dim(out, X(0), Y(R), X(0), Y(R + s.rail), -(nw / 2 + 28) * dir, 0, `Rail ${fmt(s.rail)}`, nw / 2 + 4);
   } else if (side === 'wallrail') {
-    const rr = (WALL_RAIL * k) / 2;
+    const rr = (WALL_RAIL * k) / 2, rw = Math.max(2.5, WALL_RAIL * k * scale);
     let bd = '', dots = '';
     for (const x of brackets(totalRun, k)) {
       const yb = railTop(x) - 2 * rr;
@@ -508,7 +601,8 @@ function drawElevation(out, s, g, X, Y, scale, dir) {
       dots += `<circle class="d-dot" cx="${X(x)}" cy="${Y(yb - BRACKET_DROP * k)}" r="2.5"/>`;
     }
     out.push(`<path class="d-bracket" d="${bd}"/>${dots}`,
-      `<path class="d-handrail" stroke-width="${r(Math.max(2.5, WALL_RAIL * k * scale))}" d="M${X(0)} ${Y(railTop(0) - rr)}L${X(totalRun)} ${Y(railTop(totalRun) - rr)}"/>`);
+      `<path class="d-handrail" stroke-width="${r(rw)}" d="M${X(0)} ${Y(railTop(0) - rr)}L${X(totalRun)} ${Y(railTop(totalRun) - rr)}"/>`);
+    railLabel(out, X(0), Y(railTop(0) - rr), X(totalRun), Y(railTop(totalRun) - rr), rw / 2 + 10, `Handrail ${fmt(g.wallRailLen, true)}`);
     dim(out, X(0), Y(R), X(0), Y(R + s.rail), -28 * dir, 0, `Rail ${fmt(s.rail)}`);
   }
 
@@ -568,6 +662,37 @@ function drawPlan(out, s, g, X, Y, scale) {
   dim(out, X(x0), Y(0), X(x0), Y(Wd), -24, 0, `Width ${fmt(Wd, true)}`);
 }
 
+// Material list sheet: a table centred on the sheet, H is the height above the title block.
+function drawMaterials(out, s, W, H) {
+  const groups = materials(s);
+  const notes = ['Rails: cut between posts, along the slope.', 'Pickets: at centre, tread to underside of rail.', "Stock: next length up; rails to 16', stringers to 24'."];
+  const lines = 1 + groups.reduce((n, grp) => n + 1 + grp.rows.length, 0);
+  const tw = Math.min(W - 32, 760), x0 = (W - tw) / 2;
+  const rh = Math.max(18, Math.min(28, (H - 40 - notes.length * 17) / (lines + 0.5)));
+  const right = [x0 + tw * 0.5, x0 + tw * 0.78, x0 + tw]; // right edges of qty, length, stock
+  let y = 30;
+  const row = (cls, texts) => {
+    out.push(`<text class="${cls}" x="${r(x0)}" y="${r(y)}">${esc(texts[0])}</text>`);
+    texts.slice(1).forEach((t, i) => { if (t) out.push(`<text class="${cls}" x="${r(right[i])}" y="${r(y)}" text-anchor="end">${esc(t)}</text>`); });
+  };
+  row('d-head', ['Part', 'Qty', 'Cut length', 'Stock']);
+  out.push(`<path class="d-frame" d="M${r(x0)} ${r(y + 8)}H${r(x0 + tw)}"/>`);
+  for (const grp of groups) {
+    y += rh * 1.25;
+    out.push(`<text class="d-head" x="${r(x0)}" y="${r(y)}">${esc(grp.name)}</text>`);
+    for (const m of grp.rows) {
+      y += rh;
+      row('d-cell', cells(m, s));
+      out.push(`<path class="d-rule" d="M${r(x0)} ${r(y + 7)}H${r(x0 + tw)}"/>`);
+    }
+  }
+  y += rh * 0.5;
+  for (const note of notes) {
+    y += 17;
+    out.push(`<text class="d-meta" x="${r(x0)}" y="${r(y)}">${esc(note)}</text>`);
+  }
+}
+
 function drawingSVG(s, W, H) {
   const k = s.k, g = geometry(s), plan = s.view === 'plan', dir = s.view === 'left' ? -1 : 1;
   const stacked = W < 960;
@@ -597,13 +722,14 @@ function drawingSVG(s, W, H) {
     `<style>${DRAWING_CSS}</style>`, `<rect class="d-bg" width="${W}" height="${H}"/>`];
 
   // Grid squares at true scale, lined up with the foot of the first riser.
-  const gs = GRID[s.unit] * scale;
+  const gs = s.view === 'materials' ? 0 : GRID[s.unit] * scale;
   if (gs >= 10) {
     out.push(`<defs><pattern id="d-grid" width="${r(gs)}" height="${r(gs)}" x="${X(0)}" y="${Y(0)}" patternUnits="userSpaceOnUse"><path class="d-gridline" d="M${r(gs)} 0H0V${r(gs)}"/></pattern></defs>`,
       `<rect fill="url(#d-grid)" width="${W}" height="${H - band}"/>`);
   }
 
-  if (plan) drawPlan(out, s, g, X, Y, scale);
+  if (s.view === 'materials') drawMaterials(out, s, W, H - band);
+  else if (plan) drawPlan(out, s, g, X, Y, scale);
   else drawElevation(out, s, g, X, Y, scale, dir);
 
   // Title block along the bottom of the sheet.
@@ -649,6 +775,10 @@ function renderPanel() {
     ['Pitch', pitch(s)],
   ];
   $('summary').replaceChildren(...rows.flatMap(([term, value]) => [el('dt', term), el('dd', value)]));
+
+  const body = materials(s).map((grp) => `<tr class="part-group"><th colspan="4" scope="colgroup">${esc(grp.name)}</th></tr>`
+    + grp.rows.map((m) => `<tr>${cells(m, s).map((t) => `<td>${esc(t)}</td>`).join('')}</tr>`).join('')).join('');
+  $('materials').innerHTML = `<thead><tr><th scope="col">Part</th><th scope="col">Qty</th><th scope="col">Cut length</th><th scope="col">Stock</th></tr></thead><tbody>${body}</tbody>`;
 
   const sides = [s.left, s.right];
   const rails = sides.filter(hasRail).length;
@@ -742,7 +872,7 @@ downloadsReady.then((downloads) => { if (downloads === null) $('exports').hidden
 const say = (msg) => { $('status').textContent = msg; };
 const fileBase = () => {
   const name = state.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'stair';
-  return `${name}-${state.view === 'plan' ? 'plan' : `${state.view}-side`}`;
+  return `${name}-${VIEW_FILES[state.view]}`;
 };
 
 async function offer(filename, blob) {
