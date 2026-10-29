@@ -366,7 +366,7 @@ function viewCanada() {
     }),
     lineCard({ title: 'Unemployment rate', sub: 'Seasonally adjusted.', base: 'ca_unemp', yFormat: fmtPct, series: [{ label: 'Canada', points: get('ca_unemp') }] }),
     lineCard({ title: 'New housing price index, y/y', sub: 'New homes only (house and land); lags resale prices.', base: 'ca_nhpi', yFormat: fmtPct, refLines: [{ y: 0, label: '0%' }], series: [{ label: 'Canada', points: get('ca_nhpi_yoy') }] }),
-    lineCard({ title: 'Housing starts', sub: 'Annualised units (CMHC via Statistics Canada).', base: 'ca_starts', yFormat: (v) => fmtInt(v), series: [{ label: 'Starts', points: get('ca_starts') }] }),
+    lineCard({ title: 'Housing starts', sub: 'Thousands of units, annualised (CMHC via Statistics Canada).', base: 'ca_starts', yFormat: (v, full) => (full ? v.toFixed(1) : String(Math.round(v))) + 'k', series: [{ label: 'Starts', points: get('ca_starts') }] }),
   ];
 }
 

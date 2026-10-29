@@ -37,7 +37,7 @@ export const CATALOG = [
   statcan('ca_unemp', 'Unemployment rate, Canada (seasonally adjusted)', 2062815, /unemployment rate/i, [1, 30], { unit: '%' }),
   statcan('ca_nhpi', 'New housing price index, Canada total', 111955442, /canada.*house and land/i, [10, 400]),
   // housing starts: StatCan gives only the geography as a title, so this one is range-checked only (expect = null)
-  statcan('ca_starts', 'Housing starts, Canada (annualised)', 52300157, null, [100000, 800000], { unit: 'units', optional: true }),
+  statcan('ca_starts', 'Housing starts, Canada (thousands of units, annualised)', 52300157, null, [100, 800], { unit: 'thousand units', optional: true }),
 
   // ---- US Federal Reserve & markets (FRED) ----
   fred('us_ff_upper', 'Fed funds target, upper bound', 'DFEDTARU', [0, 25], { stepOnly: true }),

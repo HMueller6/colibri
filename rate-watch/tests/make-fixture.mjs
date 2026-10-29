@@ -43,7 +43,7 @@ const make = {
   ca_cpi_index: () => { let v = 78; return monthly('1990-01-01').map((d) => [d, +(v *= 1 + 0.0018 + gauss() * 0.0015).toFixed(2)]); },
   ca_unemp: () => walk(monthly('1990-01-01'), 8.5, 0.18, 4.8, 13, 0.03, 7),
   ca_nhpi: () => { let v = 50; return monthly('1990-01-01', '2026-08-01').map((d) => [d, +(v *= 1 + 0.0025 + gauss() * 0.0025).toFixed(2)]); },
-  ca_starts: () => walk(monthly('1990-01-01', '2026-09-01'), 200000, 9000, 120000, 330000, 0.05, 240000),
+  ca_starts: () => walk(monthly('1990-01-01', '2026-09-01'), 200, 9, 120, 330, 0.05, 240),
   ca_cpi_trim: () => walk(monthly('2001-01-01'), 2.0, 0.12, 0.8, 4.5, 0.05, 2.4),
   ca_cpi_median: () => walk(monthly('2001-01-01'), 2.0, 0.12, 0.8, 4.5, 0.05, 2.5),
   ca_cpi_common: () => walk(monthly('2001-01-01'), 2.0, 0.1, 1, 4.5, 0.05, 2.2),
