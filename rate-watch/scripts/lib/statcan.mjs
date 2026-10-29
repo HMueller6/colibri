@@ -40,5 +40,5 @@ export async function fetchStatcan(spec) {
   if (t && spec.expect && !spec.expect.test(t)) {
     throw new Error(`vector ${spec.vector} title "${t}" does not match ${spec.expect}`);
   }
-  return { id: `v${spec.vector}`, label: t || '', verified: Boolean(t), points };
+  return { id: `v${spec.vector}`, label: t || '', verified: Boolean(t && spec.expect), points };
 }
