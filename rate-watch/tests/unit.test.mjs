@@ -6,6 +6,7 @@ import { parseFredCsv, parseFredJson } from '../scripts/lib/fred.mjs';
 import { parseStatcan } from '../scripts/lib/statcan.mjs';
 import { compress, inferFreq } from '../scripts/lib/util.mjs';
 import { loadOne } from '../scripts/refresh.mjs';
+import { CATALOG } from '../scripts/lib/catalog.mjs';
 
 const near = (a, b, eps = 0.005) => assert.ok(Math.abs(a - b) <= eps, `${a} vs ${b}`);
 
@@ -236,4 +237,20 @@ test('spread aligns on the first series dates', () => {
 test('lastMove finds the latest change in a step series', () => {
   assert.deepEqual(A.lastMove([['2025-10-29', 2.25], ['2026-10-28', 2.5], ['2026-10-29', 2.5]]), { date: '2026-10-28', from: 2.25, to: 2.5 });
   assert.equal(A.lastMove([['2025-10-29', 2.25], ['2026-10-28', 2.25]]), null);
+});
+
+test('catalog is well-formed: no holes, unique keys, every entry has what its fetcher needs', () => {
+  assert.equal(CATALOG.length, Object.keys(CATALOG).length);
+  const keys = new Set();
+  CATALOG.forEach((s, i) => {
+    assert.ok(s && typeof s === 'object', `entry ${i} is empty`);
+    assert.ok(!keys.has(s.key), `duplicate key ${s.key}`);
+    keys.add(s.key);
+    assert.ok(Array.isArray(s.sane) && s.sane.length === 2, `${s.key}: sane range`);
+    if (s.source === 'valet') assert.ok(Array.isArray(s.ids) && s.expect instanceof RegExp && (s.ids.length || s.group), `${s.key}: valet spec`);
+    if (s.source === 'statcan') assert.ok(Number.isInteger(s.vector), `${s.key}: vector`);
+    if (s.source === 'fred') assert.ok(typeof s.id === 'string', `${s.key}: fred id`);
+    assert.ok(['valet', 'statcan', 'fred'].includes(s.source), `${s.key}: source`);
+  });
+  assert.equal(CATALOG.length, 43);
 });
