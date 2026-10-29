@@ -33,10 +33,8 @@ async function title(vector) {
 }
 
 export async function fetchStatcan(spec) {
-  const [t, json] = await Promise.all([
-    title(spec.vector),
-    post('getDataFromVectorsAndLatestNPeriods', [{ vectorId: spec.vector, latestN: spec.latestN ?? 500 }]),
-  ]);
+  const t = await title(spec.vector);
+  const json = await post('getDataFromVectorsAndLatestNPeriods', [{ vectorId: spec.vector, latestN: spec.latestN ?? 500 }]);
   const points = parseStatcan(json);
   if (!points.length) throw new Error(`vector ${spec.vector} returned no data`);
   if (t && spec.expect && !spec.expect.test(t)) {

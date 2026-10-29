@@ -109,6 +109,16 @@ test('housing signals tilt as documented and composite labels them', () => {
   assert.equal(A.composite([]).label, 'No data');
 });
 
+test('inflation signal looks at headline as well as core', () => {
+  const idx = (end) => [['2025-09-01', 100], ['2026-09-01', end]];
+  const base = { ca_cpi_trim: [['2026-09-01', 1.8]], ca_cpi_median: [['2026-09-01', 1.9]] };
+  const tilt = (S) => A.housingSignals(S).find((s) => s.id === 'inflation').tilt;
+  assert.equal(tilt({ ...base, ca_cpi_index: idx(103.4) }), -1); // energy-driven headline 3.4% outweighs calm core
+  assert.equal(tilt({ ...base, ca_cpi_index: idx(101.5) }), 1);  // both below 2%
+  assert.equal(tilt({ ...base, ca_cpi_index: idx(102.5) }), 0);
+  assert.equal(tilt(base), 1);                                   // core only: still computed from what exists
+});
+
 test('housing signals skip missing inputs instead of guessing', () => {
   assert.equal(A.housingSignals({}).length, 0);
 });

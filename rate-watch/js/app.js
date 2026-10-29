@@ -428,7 +428,7 @@ function holdersCard() {
   return h('section', { class: 'card' }, h('h3', null, 'Who holds US government debt'), h('p', { class: 'sub' }, `Share of debt held by the public, ${dateShort(fed[0])} (quarterly data).`),
     h('div', { class: 'bar', role: 'img', 'aria-label': parts.map(([n, v]) => `${n} ${(v / tot * 100).toFixed(1)}%`).join(', ') },
       parts.map(([n, v, c]) => h('div', { class: `s${c}`, style: `width:${(v / tot * 100).toFixed(2)}%`, title: n }))),
-    h('div', { class: 'legend' }, parts.map(([n, v, c]) => h('span', { class: 'item' }, h('span', { class: `swatch s${c} d${c - 1}` }), n, ' ', h('b', null, (v / tot * 100).toFixed(1) + '%'), ` ($${(v / 1e6).toFixed(1)}T)`))),
+    h('div', { class: 'legend' }, parts.map(([n, v, c]) => h('span', { class: 'item' }, h('span', { class: `swatch s${c} d${c - 1}` }), n, ' ', h('b', null, (v / tot * 100).toFixed(1) + '%'), ` ($${(v / 1e3).toFixed(1)}T)`))),
     h('div', { class: 'foot' }, 'Source: FRED (Treasury Fiscal Service). Foreign holdings are treated as a subset of private-investor holdings.'));
 }
 

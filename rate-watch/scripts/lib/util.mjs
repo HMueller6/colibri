@@ -2,7 +2,7 @@
 
 export const UA = 'rate-watch/1.0 (personal dashboard; +https://github.com/hmueller6/colibri)';
 
-export async function http(url, { method = 'GET', body, headers = {}, tries = 3, timeoutMs = 30000 } = {}) {
+export async function http(url, { method = 'GET', body, headers = {}, tries = 4, timeoutMs = 30000 } = {}) {
   let lastErr;
   for (let attempt = 1; attempt <= tries; attempt++) {
     try {
@@ -13,10 +13,11 @@ export async function http(url, { method = 'GET', body, headers = {}, tries = 3,
         signal: AbortSignal.timeout(timeoutMs),
       });
       if (!res.ok) {
-        const err = new Error(`HTTP ${res.status} ${res.statusText} for ${url.replace(/api_key=[^&]+/, 'api_key=***')}`);
+        const snippet = (await res.text().catch(() => '')).replace(/\s+/g, ' ').slice(0, 160);
+        const err = new Error(`HTTP ${res.status} ${res.statusText} for ${url.replace(/api_key=[^&]+/, 'api_key=***')}${snippet ? ' :: ' + snippet : ''}`);
         err.status = res.status;
-        // 4xx other than rate limiting will not get better on retry
-        if (res.status >= 400 && res.status < 500 && res.status !== 429) throw Object.assign(err, { fatal: true });
+        // 4xx other than rate limiting (429, and StatCan's 430) will not get better on retry
+        if (res.status >= 400 && res.status < 500 && res.status !== 429 && res.status !== 430) throw Object.assign(err, { fatal: true });
         throw err;
       }
       return res;
@@ -24,7 +25,7 @@ export async function http(url, { method = 'GET', body, headers = {}, tries = 3,
       lastErr = e;
       if (e.cause && !e.fatal) e.message += ` (${e.cause.code || e.cause.message})`; // e.g. ENOTFOUND, ECONNRESET
       if (e.fatal || attempt === tries) break;
-      await new Promise((r) => setTimeout(r, 500 * 2 ** (attempt - 1)));
+      await new Promise((r) => setTimeout(r, 1000 * 2 ** (attempt - 1)));
     }
   }
   throw lastErr;

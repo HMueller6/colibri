@@ -85,7 +85,7 @@ async function main() {
   const series = {};
   const errors = [];
   const t0 = Date.now();
-  await pool(specs, 5, async (spec) => {
+  const one = async (spec) => {
     try {
       series[spec.key] = await loadOne(spec);
     } catch (e) {
@@ -93,7 +93,10 @@ async function main() {
       if (kept) series[spec.key] = { ...kept, stale: true };
       errors.push({ key: spec.key, source: spec.source, optional: Boolean(spec.optional), keptPrevious: Boolean(kept), message: e.message });
     }
-  });
+  };
+  // sources run side by side; StatCan answers 430 (too many requests) if hit in parallel, so it goes one at a time
+  const SIZE = { valet: 3, statcan: 1, fred: 4 };
+  await Promise.all(Object.entries(SIZE).map(([src, n]) => pool(specs.filter((s) => s.source === src), n, one)));
 
   const rows = specs.map((s) => {
     const r = series[s.key];

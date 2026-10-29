@@ -241,15 +241,15 @@ export function housingSignals(S) {
   }
   const core = ['ca_cpi_trim', 'ca_cpi_median']
     .map((k) => (S[k] && S[k].length ? last(S[k])[1] : null)).filter((x) => x != null);
-  let infl = core.length ? core.reduce((a, b) => a + b, 0) / core.length : null;
-  let inflLabel = 'Core inflation (avg of CPI-trim & median)';
-  if (infl == null && S.ca_cpi_index) {
-    const y = yoy(S.ca_cpi_index);
-    if (y.length) { infl = last(y)[1]; inflLabel = 'Headline CPI, year over year'; }
-  }
-  if (infl != null) {
-    add('inflation', inflLabel, fmt(infl) + '%', infl > 3 ? -1 : infl < 2 ? 1 : 0,
-      'Above the 3% ceiling of the target band = headwind (more hikes); below 2% = supportive');
+  const coreAvg = core.length ? core.reduce((a, b) => a + b, 0) / core.length : null;
+  const yoyHead = S.ca_cpi_index && S.ca_cpi_index.length ? last(yoy(S.ca_cpi_index)) : null;
+  const headline = yoyHead ? yoyHead[1] : null;
+  const shown = [headline, coreAvg].filter((x) => x != null);
+  if (shown.length) {
+    const hi = Math.max(...shown);
+    const txt = [headline != null ? `${fmt(headline, 1)}% headline` : null, coreAvg != null ? `${fmt(coreAvg, 1)}% core` : null].filter(Boolean).join(' · ');
+    add('inflation', 'Inflation (headline y/y; core = avg of trim & median)', txt, hi > 3 ? -1 : hi < 2 ? 1 : 0,
+      'Either measure above the 3% ceiling of the target band = headwind (more hikes); both below 2% = supportive');
   }
   const uc = change(S.ca_unemp, 6);
   if (uc != null) {

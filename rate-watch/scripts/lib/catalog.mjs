@@ -33,7 +33,7 @@ export const CATALOG = [
   valet('ca_cpi_common', 'CPI-common (core), year over year', ['CPI_COMMON'], /common/i, { sane: [-5, 25], optional: true }),
 
   // ---- Statistics Canada (WDS) ----
-  statcan('ca_cpi_index', 'CPI, all-items, Canada (2002=100)', 41690973, /consumer price index/i, [40, 500]),
+  statcan('ca_cpi_index', 'CPI, all-items, Canada (2002=100)', 41690973, /canada.*all-items/i, [40, 500]),
   statcan('ca_unemp', 'Unemployment rate, Canada (seasonally adjusted)', 2062815, /unemployment rate/i, [1, 30], { unit: '%' }),
   statcan('ca_nhpi', 'New housing price index, Canada total', 111955442, /new housing price/i, [10, 400]),
   statcan('ca_starts', 'Housing starts, Canada (annualised)', 52300157, /housing starts/i, [20000, 800000], { unit: 'units', optional: true }),
@@ -63,7 +63,7 @@ export const CATALOG = [
   fred('us_walcl', 'Fed balance sheet, total assets ($ millions)', 'WALCL', [1e5, 3e7], { unit: '$mn' }),
   fred('us_bank_credit', 'Bank credit, all US commercial banks ($ billions)', 'TOTBKCR', [1000, 60000], { unit: '$bn', optional: true }),
   fred('us_delinq_mort', 'Delinquency rate on single-family mortgages, US banks', 'DRSFRMACBS', [0, 30], { optional: true }),
-  fred('us_debt_fed', 'US federal debt held by the Federal Reserve ($ millions)', 'FDHBFRBN', [1e5, 1e8], { unit: '$mn', optional: true }),
-  fred('us_debt_foreign', 'US federal debt held by foreign & international investors ($ millions)', 'FDHBFIN', [1e5, 1e8], { unit: '$mn', optional: true }),
-  fred('us_debt_private', 'US federal debt held by private investors, incl. foreign ($ millions)', 'FDHBPIN', [1e5, 1e8], { unit: '$mn', optional: true }),
+  fred('us_debt_fed', 'US federal debt held by the Federal Reserve ($ billions)', 'FDHBFRBN', [100, 1e5], { unit: '$bn', optional: true }),
+  fred('us_debt_foreign', 'US federal debt held by foreign & international investors ($ billions)', 'FDHBFIN', [100, 1e5], { unit: '$bn', optional: true }),
+  fred('us_debt_private', 'US federal debt held by private investors, incl. foreign ($ billions)', 'FDHBPIN', [100, 1e5], { unit: '$bn', optional: true }),
 ];
